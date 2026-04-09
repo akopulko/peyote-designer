@@ -85,3 +85,49 @@ func TestExtensionsRoundTripCompatibility(t *testing.T) {
 		t.Fatalf("unexpected extension payload: %s", decoded.Extensions["future"])
 	}
 }
+
+func TestResizeShrinksFromBottomAndLeft(t *testing.T) {
+	t.Parallel()
+
+	doc, _ := NewDocument(3, 3)
+	color := doc.EnsurePaletteColor("#112233")
+	_ = doc.SetBeadColor(0, 0, color.ID)
+	_ = doc.SetBeadColor(0, 1, color.ID)
+	_ = doc.SetBeadColor(2, 2, color.ID)
+
+	if err := doc.Resize(2, 2); err != nil {
+		t.Fatalf("Resize() error = %v", err)
+	}
+
+	if doc.Canvas.Width != 2 || doc.Canvas.Height != 2 {
+		t.Fatalf("unexpected size after resize: %+v", doc.Canvas)
+	}
+	if doc.Beads[0][0].ColorID != color.ID {
+		t.Fatalf("expected old column 1 to become new column 0, got %q", doc.Beads[0][0].ColorID)
+	}
+	if len(doc.Beads) != 2 {
+		t.Fatalf("expected bottom rows to be removed")
+	}
+}
+
+func TestResizeGrowsRowsBottomAndColumnsLeft(t *testing.T) {
+	t.Parallel()
+
+	doc, _ := NewDocument(2, 2)
+	color := doc.EnsurePaletteColor("#445566")
+	_ = doc.SetBeadColor(0, 0, color.ID)
+
+	if err := doc.Resize(4, 3); err != nil {
+		t.Fatalf("Resize() error = %v", err)
+	}
+
+	if doc.Canvas.Width != 4 || doc.Canvas.Height != 3 {
+		t.Fatalf("unexpected size after resize: %+v", doc.Canvas)
+	}
+	if doc.Beads[0][2].ColorID != color.ID {
+		t.Fatalf("expected original first column to shift right after left padding, got %q", doc.Beads[0][2].ColorID)
+	}
+	if len(doc.Beads[2]) != 4 {
+		t.Fatalf("expected new bottom row to match new width")
+	}
+}
