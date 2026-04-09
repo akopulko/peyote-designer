@@ -11,6 +11,10 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - name: Install Linux GUI build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libgl1-mesa-dev xorg-dev
       - name: Tidy
         run: |
           go mod tidy
@@ -21,4 +25,3 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
-
