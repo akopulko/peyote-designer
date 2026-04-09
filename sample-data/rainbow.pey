@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "metadata": {
+    "appName": "Peyote Designer",
+    "title": "Rainbow Sample",
+    "createdAt": "2026-04-09T00:00:00Z",
+    "updatedAt": "2026-04-09T00:00:00Z"
+  },
+  "canvas": {
+    "width": 6,
+    "height": 5
+  },
+  "palette": [
+    { "id": "color-1", "index": 1, "hex": "#D73A31" },
+    { "id": "color-2", "index": 2, "hex": "#E7A600" },
+    { "id": "color-3", "index": 3, "hex": "#00875A" },
+    { "id": "color-4", "index": 4, "hex": "#1F6FEB" }
+  ],
+  "beads": [
+    [
+      { "colorId": "color-1", "completed": true },
+      { "colorId": "color-2", "completed": false },
+      { "colorId": "color-3", "completed": false },
+      { "colorId": "color-4", "completed": false },
+      { "colorId": "color-1", "completed": false },
+      { "colorId": "color-2", "completed": false }
+    ],
+    [
+      { "colorId": "color-2", "completed": false },
+      { "colorId": "color-3", "completed": true },
+      { "colorId": "color-4", "completed": false },
+      { "colorId": "color-1", "completed": false },
+      { "colorId": "color-2", "completed": false },
+      { "colorId": "color-3", "completed": false }
+    ],
+    [
+      { "colorId": "color-3", "completed": false },
+      { "colorId": "color-4", "completed": false },
+      { "colorId": "color-1", "completed": true },
+      { "colorId": "color-2", "completed": false },
+      { "colorId": "color-3", "completed": false },
+      { "colorId": "color-4", "completed": false }
+    ],
+    [
+      { "colorId": "color-4", "completed": false },
+      { "colorId": "color-1", "completed": false },
+      { "colorId": "color-2", "completed": false },
+      { "colorId": "color-3", "completed": true },
+      { "colorId": "color-4", "completed": false },
+      { "colorId": "color-1", "completed": false }
+    ],
+    [
+      { "colorId": "color-1", "completed": false },
+      { "colorId": "color-2", "completed": false },
+      { "colorId": "color-3", "completed": false },
+      { "colorId": "color-4", "completed": false },
+      { "colorId": "color-1", "completed": true },
+      { "colorId": "color-2", "completed": false }
+    ]
+  ],
+  "view": {
+    "zoom": 1,
+    "selectedTool": "paint",
+    "selectedColorId": "color-1"
+  },
+  "extensions": {}
+}
