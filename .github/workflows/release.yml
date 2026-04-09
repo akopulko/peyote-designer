@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build macOS binary
+        run: |
+          mkdir -p dist
+          CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -o dist/peyote-designer-darwin-arm64 ./cmd/peyote-designer
+      - name: Archive macOS build
+        run: |
+          cd dist
+          zip -r peyote-designer-darwin-arm64.zip peyote-designer-darwin-arm64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macos
+          path: dist/peyote-designer-darwin-arm64.zip
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build Windows binary
+        shell: bash
+        run: |
+          mkdir -p dist
+          go build -o dist/peyote-designer-windows-amd64.exe ./cmd/peyote-designer
+      - name: Archive Windows build
+        shell: pwsh
+        run: Compress-Archive -Path dist/peyote-designer-windows-amd64.exe -DestinationPath dist/peyote-designer-windows-amd64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: dist/peyote-designer-windows-amd64.zip
+
+  publish:
+    runs-on: ubuntu-latest
+    needs:
+      - build-macos
+      - build-windows
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-assets/release-macos/peyote-designer-darwin-arm64.zip
+            release-assets/release-windows/peyote-designer-windows-amd64.zip

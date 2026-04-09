@@ -1,0 +1,41 @@
+name: Branch Builds
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build
+        run: |
+          mkdir -p dist
+          CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -o dist/peyote-designer-darwin-arm64 ./cmd/peyote-designer
+      - uses: actions/upload-artifact@v4
+        with:
+          name: peyote-designer-darwin-arm64
+          path: dist/peyote-designer-darwin-arm64
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build
+        shell: bash
+        run: |
+          mkdir -p dist
+          go build -o dist/peyote-designer-windows-amd64.exe ./cmd/peyote-designer
+      - uses: actions/upload-artifact@v4
+        with:
+          name: peyote-designer-windows-amd64.exe
+          path: dist/peyote-designer-windows-amd64.exe

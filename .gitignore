@@ -1,0 +1,16 @@
+/bin/
+/dist/
+/coverage.out
+/coverage.html
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.app
+*.zip
+*.log
+.DS_Store
+

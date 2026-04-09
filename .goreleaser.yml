@@ -1,0 +1,42 @@
+version: 2
+
+project_name: peyote-designer
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
+builds:
+  - id: peyote-designer
+    main: ./cmd/peyote-designer
+    binary: peyote-designer
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - windows
+    goarch:
+      - arm64
+      - amd64
+    ignore:
+      - goos: darwin
+        goarch: amd64
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - id: default
+    formats: [zip]
+    name_template: >-
+      {{ .ProjectName }}-{{ .Os }}-{{ .Arch }}
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+
+release:
+  draft: false
+
