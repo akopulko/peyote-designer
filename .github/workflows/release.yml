@@ -16,18 +16,17 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Build macOS binary
+      - name: Build macOS app
         run: |
-          mkdir -p dist
-          CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -o dist/peyote-designer-darwin-arm64 ./cmd/peyote-designer
+          make build-macos
       - name: Archive macOS build
         run: |
           cd dist
-          zip -r peyote-designer-darwin-arm64.zip peyote-designer-darwin-arm64
+          ditto -c -k --keepParent "Peyote Designer.app" peyote-designer-macos-arm64.zip
       - uses: actions/upload-artifact@v4
         with:
           name: release-macos
-          path: dist/peyote-designer-darwin-arm64.zip
+          path: dist/peyote-designer-macos-arm64.zip
 
   build-windows:
     runs-on: windows-latest
@@ -62,5 +61,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            release-assets/release-macos/peyote-designer-darwin-arm64.zip
+            release-assets/release-macos/peyote-designer-macos-arm64.zip
             release-assets/release-windows/peyote-designer-windows-amd64.zip

@@ -266,6 +266,39 @@ func (d *Document) RemoveColumn(index int) error {
 	return nil
 }
 
+func (d *Document) Resize(width, height int) error {
+	if width <= 0 || height <= 0 {
+		return errors.New("width and height must be greater than zero")
+	}
+
+	switch {
+	case width < d.Canvas.Width:
+		delta := d.Canvas.Width - width
+		for row := range d.Beads {
+			d.Beads[row] = append([]Bead(nil), d.Beads[row][delta:]...)
+		}
+	case width > d.Canvas.Width:
+		delta := width - d.Canvas.Width
+		for row := range d.Beads {
+			padding := make([]Bead, delta)
+			d.Beads[row] = append(padding, d.Beads[row]...)
+		}
+	}
+	d.Canvas.Width = width
+
+	switch {
+	case height < d.Canvas.Height:
+		d.Beads = append([][]Bead(nil), d.Beads[:height]...)
+	case height > d.Canvas.Height:
+		for row := d.Canvas.Height; row < height; row++ {
+			d.Beads = append(d.Beads, make([]Bead, width))
+		}
+	}
+	d.Canvas.Height = height
+	d.Touch()
+	return nil
+}
+
 func (d *Document) validateCoords(row, col int) error {
 	if row < 0 || row >= d.Canvas.Height {
 		return errors.New("row out of range")

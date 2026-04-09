@@ -34,17 +34,12 @@ type Controller struct {
 }
 
 func NewController(store *persistence.Store, logger *slog.Logger) (*Controller, error) {
-	doc, err := model.NewDocument(12, 20)
-	if err != nil {
-		return nil, err
-	}
-	defaultColor := doc.EnsurePaletteColor("#000000")
 	session := &Session{
-		Document:        doc,
+		Document:        nil,
 		CurrentTool:     model.ToolPaint,
 		SelectionTarget: model.SelectionNone,
 		Selection:       model.Selection{Mode: model.SelectionNone, Index: -1},
-		SelectedColor:   defaultColor,
+		SelectedColor:   model.PaletteColor{Hex: "#000000"},
 		Zoom:            1,
 	}
 	return &Controller{store: store, logger: logger, session: session}, nil
@@ -52,6 +47,10 @@ func NewController(store *persistence.Store, logger *slog.Logger) (*Controller, 
 
 func (c *Controller) Session() *Session {
 	return c.session
+}
+
+func (c *Controller) HasDocument() bool {
+	return c.session.Document != nil
 }
 
 func (c *Controller) Subscribe(fn func()) {
@@ -137,17 +136,28 @@ func (c *Controller) SaveAs(path string) error {
 func (c *Controller) SetTool(tool model.Tool) {
 	c.session.CurrentTool = tool
 	c.session.SelectionTarget = model.SelectionNone
+	c.session.Selection = model.Selection{Mode: model.SelectionNone, Index: -1}
 	c.logger.Info("tool selected", "tool", tool)
 	c.notify()
 }
 
 func (c *Controller) SetSelectionTarget(mode model.SelectionMode) {
+	if c.session.Document == nil {
+		return
+	}
 	c.session.SelectionTarget = mode
 	c.logger.Info("selection target changed", "mode", mode)
 	c.notify()
 }
 
 func (c *Controller) SetSelectedColor(hex string) {
+	hex = model.NormalizeHex(hex)
+	if c.session.Document == nil {
+		c.session.SelectedColor = model.PaletteColor{Hex: hex}
+		c.logger.Info("selected colour changed", "color", hex)
+		c.notify()
+		return
+	}
 	color := c.session.Document.EnsurePaletteColor(hex)
 	c.session.SelectedColor = color
 	c.session.Dirty = true
@@ -156,6 +166,9 @@ func (c *Controller) SetSelectedColor(hex string) {
 }
 
 func (c *Controller) ActivateBead(row, col int) error {
+	if c.session.Document == nil {
+		return errors.New("no active document")
+	}
 	if c.session.SelectionTarget == model.SelectionRow {
 		c.session.Selection = model.Selection{Mode: model.SelectionRow, Index: row}
 		c.logger.Info("row selected", "row", row)
@@ -191,6 +204,9 @@ func (c *Controller) ActivateBead(row, col int) error {
 }
 
 func (c *Controller) RemoveSelectedRow() error {
+	if c.session.Document == nil {
+		return errors.New("no active document")
+	}
 	if c.session.Selection.Mode != model.SelectionRow {
 		return errors.New("no row selected")
 	}
@@ -205,6 +221,9 @@ func (c *Controller) RemoveSelectedRow() error {
 }
 
 func (c *Controller) RemoveSelectedColumn() error {
+	if c.session.Document == nil {
+		return errors.New("no active document")
+	}
 	if c.session.Selection.Mode != model.SelectionColumn {
 		return errors.New("no column selected")
 	}
@@ -214,6 +233,21 @@ func (c *Controller) RemoveSelectedColumn() error {
 	c.session.Selection = model.Selection{Mode: model.SelectionNone, Index: -1}
 	c.session.Dirty = true
 	c.logger.Info("column removed")
+	c.notify()
+	return nil
+}
+
+func (c *Controller) ResizeDocument(width, height int) error {
+	if c.session.Document == nil {
+		return errors.New("no active document")
+	}
+	if err := c.session.Document.Resize(width, height); err != nil {
+		return err
+	}
+	c.session.SelectionTarget = model.SelectionNone
+	c.session.Selection = model.Selection{Mode: model.SelectionNone, Index: -1}
+	c.session.Dirty = true
+	c.logger.Info("document resized", "width", width, "height", height)
 	c.notify()
 	return nil
 }
@@ -243,11 +277,11 @@ func (c *Controller) ZoomOut() {
 }
 
 func (c *Controller) CanRemoveRow() bool {
-	return c.session.Selection.Mode == model.SelectionRow && c.session.Document.Canvas.Height > 1
+	return c.session.Document != nil && c.session.Selection.Mode == model.SelectionRow && c.session.Document.Canvas.Height > 1
 }
 
 func (c *Controller) CanRemoveColumn() bool {
-	return c.session.Selection.Mode == model.SelectionColumn && c.session.Document.Canvas.Width > 1
+	return c.session.Document != nil && c.session.Selection.Mode == model.SelectionColumn && c.session.Document.Canvas.Width > 1
 }
 
 func chooseZoom(value float32) float32 {
