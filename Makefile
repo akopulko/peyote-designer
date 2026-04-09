@@ -3,7 +3,9 @@ APP_DISPLAY_NAME := Peyote Designer
 CMD := ./cmd/peyote-designer
 DIST := dist
 MACOS_APP := $(DIST)/$(APP_DISPLAY_NAME).app
+MACOS_DMG := $(DIST)/$(APP_NAME)-macos-arm64.dmg
 WINDOWS_BIN := $(DIST)/$(APP_NAME)-windows-amd64.exe
+WINDOWS_ZIP := $(DIST)/$(APP_NAME)-windows-amd64.zip
 
 .PHONY: run build build-macos build-windows test lint clean package
 
@@ -34,5 +36,5 @@ clean:
 	rm -rf $(DIST)
 
 package: clean build-macos build-windows
-	cd $(DIST) && ditto -c -k --keepParent "$(APP_DISPLAY_NAME).app" "$(APP_NAME)-macos-arm64.zip"
-	cd $(DIST) && zip -r $(APP_NAME)-windows-amd64.zip $(notdir $(WINDOWS_BIN))
+	sh ./scripts/package_macos_dmg.sh
+	cd $(DIST) && zip -j $(notdir $(WINDOWS_ZIP)) $(notdir $(WINDOWS_BIN))

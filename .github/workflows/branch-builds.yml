@@ -6,35 +6,44 @@ on:
       - main
       - develop
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-      - name: Build
+      - name: Build macOS app
         run: |
           make build-macos
-      - uses: actions/upload-artifact@v4
+      - name: Package macOS DMG
+        run: |
+          sh ./scripts/package_macos_dmg.sh
+      - uses: actions/upload-artifact@v5
         with:
-          name: Peyote Designer.app
-          path: dist/Peyote Designer.app
+          name: peyote-designer-macos-arm64.dmg
+          path: dist/peyote-designer-macos-arm64.dmg
 
   build-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-      - name: Build
+      - name: Build Windows binary
         shell: bash
         run: |
           mkdir -p dist
           go build -o dist/peyote-designer-windows-amd64.exe ./cmd/peyote-designer
-      - uses: actions/upload-artifact@v4
+      - name: Package Windows ZIP
+        shell: pwsh
+        run: Compress-Archive -Path dist/peyote-designer-windows-amd64.exe -DestinationPath dist/peyote-designer-windows-amd64.zip
+      - uses: actions/upload-artifact@v5
         with:
-          name: peyote-designer-windows-amd64.exe
-          path: dist/peyote-designer-windows-amd64.exe
+          name: peyote-designer-windows-amd64.zip
+          path: dist/peyote-designer-windows-amd64.zip

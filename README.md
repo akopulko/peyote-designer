@@ -52,7 +52,7 @@ make package
 
 - `make build-macos` creates `dist/Peyote Designer.app`
 - `make build-windows` creates `dist/peyote-designer-windows-amd64.exe`
-- `make package` creates ZIP archives for both targets in `dist/`
+- `make package` creates `dist/peyote-designer-macos-arm64.dmg` and `dist/peyote-designer-windows-amd64.zip`
 
 `make build` currently aliases the macOS build for local desktop work.
 
@@ -69,7 +69,7 @@ GitHub Actions handles three workflows:
 - native branch builds for `main` and `develop`
 - tagged releases for `v*`
 
-Tagged releases build a macOS `.app` bundle and a Windows executable on their respective runners, package ZIP archives, and attach them to the GitHub release.
+Tagged releases build a macOS `.dmg` and a Windows `.zip` on their respective runners and attach both artifacts to the GitHub release.
 
 ## File Format Overview
 
