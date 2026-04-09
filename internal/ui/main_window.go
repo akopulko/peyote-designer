@@ -66,7 +66,7 @@ func NewMainWindow(fyneApp fyne.App, controller *app.Controller, logger *slog.Lo
 		printer:      printer,
 		statsLabel:   widget.NewLabel(""),
 		paletteBox:   container.NewVBox(),
-		colorPreview: canvas.NewRectangle(theme.PrimaryColor()),
+		colorPreview: canvas.NewRectangle(theme.Color(theme.ColorNamePrimary)),
 		toolButtons:  make(map[model.Tool]*widget.Button),
 	}
 
@@ -516,7 +516,7 @@ func (mw *MainWindow) showDebugLog() {
 		for _, item := range mw.logBuffer.Entries() {
 			lines = append(lines, item.Line)
 		}
-		mw.window.Clipboard().SetContent(strings.Join(lines, "\n"))
+		mw.app.Clipboard().SetContent(strings.Join(lines, "\n"))
 	})
 	logWindow.SetContent(container.NewBorder(nil, container.NewHBox(clearButton, copyButton), nil, nil, container.NewScroll(entry)))
 	logWindow.Resize(fyne.NewSize(760, 420))
@@ -633,11 +633,11 @@ func renderPreviewColor(hex string) color.Color {
 func renderColor(hex string) color.Color {
 	parsed := strings.TrimPrefix(model.NormalizeHex(hex), "#")
 	if len(parsed) != 6 {
-		return theme.PrimaryColor()
+		return theme.Color(theme.ColorNamePrimary)
 	}
 	value, err := strconv.ParseUint(parsed, 16, 32)
 	if err != nil {
-		return theme.PrimaryColor()
+		return theme.Color(theme.ColorNamePrimary)
 	}
 	return &color.NRGBA{
 		R: uint8(value >> 16),
@@ -701,7 +701,7 @@ func (s *colorSwatch) CreateRenderer() fyne.WidgetRenderer {
 	border.StrokeWidth = 2
 	border.StrokeColor = color.NRGBA{R: 60, G: 60, B: 60, A: 255}
 	if s.selected {
-		border.StrokeColor = theme.PrimaryColor()
+		border.StrokeColor = theme.Color(theme.ColorNamePrimary)
 		border.StrokeWidth = 3
 	}
 	return &colorSwatchRenderer{swatch: s, fill: fill, border: border}
@@ -728,7 +728,7 @@ func (r *colorSwatchRenderer) Refresh() {
 	r.border.StrokeColor = color.NRGBA{R: 60, G: 60, B: 60, A: 255}
 	r.border.StrokeWidth = 2
 	if r.swatch.selected {
-		r.border.StrokeColor = theme.PrimaryColor()
+		r.border.StrokeColor = theme.Color(theme.ColorNamePrimary)
 		r.border.StrokeWidth = 3
 	}
 	r.border.Refresh()
