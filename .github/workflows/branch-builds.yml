@@ -23,7 +23,7 @@ jobs:
       - name: Package macOS DMG
         run: |
           sh ./scripts/package_macos_dmg.sh
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: peyote-designer-macos-arm64.dmg
           path: dist/peyote-designer-macos-arm64.dmg
@@ -43,7 +43,7 @@ jobs:
       - name: Package Windows ZIP
         shell: pwsh
         run: Compress-Archive -Path dist/peyote-designer-windows-amd64.exe -DestinationPath dist/peyote-designer-windows-amd64.zip
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: peyote-designer-windows-amd64.zip
           path: dist/peyote-designer-windows-amd64.zip
