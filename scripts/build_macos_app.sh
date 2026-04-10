@@ -5,6 +5,8 @@ APP_NAME="peyote-designer"
 APP_DISPLAY_NAME="Peyote Designer"
 APP_ID="com.kostya.peyote-designer"
 DIST="dist"
+APP_VERSION="${VERSION:-dev}"
+APP_BUILD_VERSION="${BUILD_VERSION:-$APP_VERSION}"
 APP_BUNDLE="$DIST/$APP_DISPLAY_NAME.app"
 CONTENTS_DIR="$APP_BUNDLE/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
@@ -15,10 +17,32 @@ PNG_ICON="$RESOURCES_DIR/app.png"
 BIN_PATH="$MACOS_DIR/$APP_NAME"
 LEGACY_BIN="$DIST/$APP_NAME-darwin-arm64"
 
+case "$APP_VERSION" in
+  ''|*[!0-9.]*)
+    PLIST_SHORT_VERSION="0.0.0"
+    ;;
+  *)
+    PLIST_SHORT_VERSION="$APP_VERSION"
+    ;;
+esac
+
+case "$APP_BUILD_VERSION" in
+  ''|*[!0-9.]*)
+    PLIST_BUILD_VERSION="$PLIST_SHORT_VERSION"
+    ;;
+  *)
+    PLIST_BUILD_VERSION="$APP_BUILD_VERSION"
+    ;;
+esac
+
 rm -rf "$APP_BUNDLE" "$ICONSET_DIR" "$LEGACY_BIN"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR" "$ICONSET_DIR"
 
-CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -o "$BIN_PATH" ./cmd/peyote-designer
+set -- go build -o "$BIN_PATH" ./cmd/peyote-designer
+if [ -n "${GO_LDFLAGS:-}" ]; then
+  set -- go build -ldflags "$GO_LDFLAGS" -o "$BIN_PATH" ./cmd/peyote-designer
+fi
+CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 "$@"
 cp icons/app.png "$PNG_ICON"
 
 sips -z 16 16 icons/app.png --out "$ICONSET_DIR/icon_16x16.png" >/dev/null
@@ -56,9 +80,9 @@ cat > "$CONTENTS_DIR/Info.plist" <<EOF
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.1.0</string>
+  <string>$PLIST_SHORT_VERSION</string>
   <key>CFBundleVersion</key>
-  <string>1</string>
+  <string>$PLIST_BUILD_VERSION</string>
   <key>LSMinimumSystemVersion</key>
   <string>12.0</string>
   <key>NSHighResolutionCapable</key>

@@ -48,6 +48,12 @@ make build-windows
 make package
 ```
 
+Versioned builds are supported through environment variables:
+
+```bash
+make build-macos VERSION=0.1.0 COMMIT=$(git rev-parse --short HEAD) BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+```
+
 ## Build and Packaging
 
 - `make build-macos` creates `dist/Peyote Designer.app`
@@ -70,6 +76,7 @@ GitHub Actions handles three workflows:
 - tagged releases for `v*`
 
 Tagged releases build a macOS `.dmg` and a Windows `.zip` on their respective runners and attach both artifacts to the GitHub release.
+Release tags remain `v*`, and shortened tags such as `v0.1` are normalized to `0.1.0` for embedded build metadata and macOS bundle versioning.
 
 ## File Format Overview
 

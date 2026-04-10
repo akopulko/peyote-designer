@@ -20,6 +20,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/kostya/peyote-designer/internal/app"
+	"github.com/kostya/peyote-designer/internal/buildinfo"
 	applog "github.com/kostya/peyote-designer/internal/logging"
 	"github.com/kostya/peyote-designer/internal/model"
 	"github.com/kostya/peyote-designer/internal/printing"
@@ -468,7 +469,12 @@ func (mw *MainWindow) showDebugLog() {
 		mw.debugWindow.RequestFocus()
 		return
 	}
-	logWindow := mw.app.NewWindow("Debug Log")
+	logWindow := mw.app.NewWindow(fmt.Sprintf("Debug Log - %s %s", model.AppName, buildinfo.DisplayVersion()))
+	versionLabel := widget.NewLabelWithStyle(
+		fmt.Sprintf("Version %s", buildinfo.DisplayVersion()),
+		fyne.TextAlignLeading,
+		fyne.TextStyle{Bold: true},
+	)
 	entry := widget.NewRichText()
 	entry.Wrapping = fyne.TextWrapWord
 	refresh := func() {
@@ -518,7 +524,7 @@ func (mw *MainWindow) showDebugLog() {
 		}
 		mw.app.Clipboard().SetContent(strings.Join(lines, "\n"))
 	})
-	logWindow.SetContent(container.NewBorder(nil, container.NewHBox(clearButton, copyButton), nil, nil, container.NewScroll(entry)))
+	logWindow.SetContent(container.NewBorder(versionLabel, container.NewHBox(clearButton, copyButton), nil, nil, container.NewScroll(entry)))
 	logWindow.Resize(fyne.NewSize(760, 420))
 	logWindow.SetOnClosed(func() {
 		mw.debugWindow = nil

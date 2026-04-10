@@ -19,9 +19,15 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+      - name: Resolve build metadata
+        shell: bash
+        run: |
+          echo "VERSION=$(sh ./scripts/normalize_version.sh "${GITHUB_REF_NAME}")" >> "$GITHUB_ENV"
+          echo "COMMIT=${GITHUB_SHA}" >> "$GITHUB_ENV"
+          echo "BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
       - name: Build macOS app
         run: |
-          make build-macos
+          make build-macos VERSION="${VERSION}" COMMIT="${COMMIT}" BUILD_DATE="${BUILD_DATE}"
       - name: Package macOS DMG
         run: |
           sh ./scripts/package_macos_dmg.sh
@@ -37,11 +43,17 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+      - name: Resolve build metadata
+        shell: bash
+        run: |
+          echo "VERSION=$(sh ./scripts/normalize_version.sh "${GITHUB_REF_NAME}")" >> "$GITHUB_ENV"
+          echo "COMMIT=${GITHUB_SHA}" >> "$GITHUB_ENV"
+          echo "BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
       - name: Build Windows binary
         shell: bash
         run: |
           mkdir -p dist
-          go build -o dist/peyote-designer-windows-amd64.exe ./cmd/peyote-designer
+          go build -ldflags "-X github.com/kostya/peyote-designer/internal/buildinfo.Version=${VERSION} -X github.com/kostya/peyote-designer/internal/buildinfo.Commit=${COMMIT} -X github.com/kostya/peyote-designer/internal/buildinfo.BuildDate=${BUILD_DATE}" -o dist/peyote-designer-windows-amd64.exe ./cmd/peyote-designer
       - name: Archive Windows build
         shell: pwsh
         run: Compress-Archive -Path dist/peyote-designer-windows-amd64.exe -DestinationPath dist/peyote-designer-windows-amd64.zip
@@ -62,6 +74,7 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
+          generate_release_notes: true
           files: |
             release-assets/release-macos/peyote-designer-macos-arm64.dmg
             release-assets/release-windows/peyote-designer-windows-amd64.zip
