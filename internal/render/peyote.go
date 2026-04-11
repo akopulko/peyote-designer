@@ -13,16 +13,16 @@ func PeyoteMapSize(columns, rows int, metrics Metrics) image.Point {
 		return image.Point{}
 	}
 	width := metrics.Gap + columns*(metrics.BeadWidth+metrics.Gap)
-	if rows > 1 {
-		width += rowOffset(1, metrics)
-	}
 	height := metrics.Gap + rows*(metrics.BeadHeight+metrics.Gap)
+	if columns > 1 {
+		height += columnOffset(1, metrics)
+	}
 	return image.Pt(width, height)
 }
 
 func PeyoteBeadBounds(row, col int, metrics Metrics) image.Rectangle {
-	x := metrics.Gap + rowOffset(row, metrics) + col*(metrics.BeadWidth+metrics.Gap)
-	y := metrics.Gap + row*(metrics.BeadHeight+metrics.Gap)
+	x := metrics.Gap + col*(metrics.BeadWidth+metrics.Gap)
+	y := metrics.Gap + columnOffset(col, metrics) + row*(metrics.BeadHeight+metrics.Gap)
 	return image.Rect(x, y, x+metrics.BeadWidth, y+metrics.BeadHeight)
 }
 
@@ -30,23 +30,23 @@ func HitTestPeyote(position fyne.Position, columns, rows int, metrics Metrics) (
 	if columns <= 0 || rows <= 0 {
 		return 0, 0, false
 	}
-	strideY := float32(metrics.BeadHeight + metrics.Gap)
-	offsetY := position.Y - float32(metrics.Gap)
-	if offsetY < 0 {
-		return 0, 0, false
-	}
-	row := int(offsetY / strideY)
-	if row < 0 || row >= rows {
-		return 0, 0, false
-	}
-
 	strideX := float32(metrics.BeadWidth + metrics.Gap)
-	offsetX := position.X - float32(metrics.Gap+rowOffset(row, metrics))
+	offsetX := position.X - float32(metrics.Gap)
 	if offsetX < 0 {
 		return 0, 0, false
 	}
 	col := int(offsetX / strideX)
 	if col < 0 || col >= columns {
+		return 0, 0, false
+	}
+
+	strideY := float32(metrics.BeadHeight + metrics.Gap)
+	offsetY := position.Y - float32(metrics.Gap+columnOffset(col, metrics))
+	if offsetY < 0 {
+		return 0, 0, false
+	}
+	row := int(offsetY / strideY)
+	if row < 0 || row >= rows {
 		return 0, 0, false
 	}
 
@@ -76,23 +76,23 @@ func DrawPeyoteOverlay(dst *image.RGBA, rect image.Rectangle, columns, rows int,
 	if columns <= 0 || rows <= 0 || rect.Dx() <= 0 || rect.Dy() <= 0 {
 		return
 	}
-	logicalColumns := float64(columns)
-	if rows > 1 {
-		logicalColumns += 0.5
+	logicalRows := float64(rows)
+	if columns > 1 {
+		logicalRows += 0.5
 	}
-	strideX := float64(rect.Dx()) / logicalColumns
-	strideY := float64(rect.Dy()) / float64(rows)
+	strideX := float64(rect.Dx()) / float64(columns)
+	strideY := float64(rect.Dy()) / logicalRows
 	for row := 0; row < rows; row++ {
-		rowOffset := 0.0
-		if row%2 == 1 {
-			rowOffset = strideX / 2
-		}
 		for col := 0; col < columns; col++ {
+			columnOffset := 0.0
+			if col%2 == 1 {
+				columnOffset = strideY / 2
+			}
 			beadRect := image.Rect(
-				rect.Min.X+int(math.Round(rowOffset+float64(col)*strideX)),
-				rect.Min.Y+int(math.Round(float64(row)*strideY)),
-				rect.Min.X+int(math.Round(rowOffset+float64(col+1)*strideX)),
-				rect.Min.Y+int(math.Round(float64(row+1)*strideY)),
+				rect.Min.X+int(math.Round(float64(col)*strideX)),
+				rect.Min.Y+int(math.Round(columnOffset+float64(row)*strideY)),
+				rect.Min.X+int(math.Round(float64(col+1)*strideX)),
+				rect.Min.Y+int(math.Round(columnOffset+float64(row+1)*strideY)),
 			)
 			DrawPeyoteBeadOutline(dst, beadRect, halo, 3)
 			DrawPeyoteBeadOutline(dst, beadRect, stroke, 1)
@@ -100,11 +100,11 @@ func DrawPeyoteOverlay(dst *image.RGBA, rect image.Rectangle, columns, rows int,
 	}
 }
 
-func rowOffset(row int, metrics Metrics) int {
-	if row%2 == 0 {
+func columnOffset(col int, metrics Metrics) int {
+	if col%2 == 0 {
 		return 0
 	}
-	return (metrics.BeadWidth + metrics.Gap) / 2
+	return (metrics.BeadHeight + metrics.Gap) / 2
 }
 
 func fillRect(img *image.RGBA, rect image.Rectangle, fill color.NRGBA) {
