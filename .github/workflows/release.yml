@@ -53,7 +53,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          go build -ldflags "-X github.com/kostya/peyote-designer/internal/buildinfo.Version=${VERSION} -X github.com/kostya/peyote-designer/internal/buildinfo.Commit=${COMMIT} -X github.com/kostya/peyote-designer/internal/buildinfo.BuildDate=${BUILD_DATE}" -o dist/peyote-designer-windows-amd64.exe ./cmd/peyote-designer
+          go build -ldflags "-H windowsgui -X github.com/kostya/peyote-designer/internal/buildinfo.Version=${VERSION} -X github.com/kostya/peyote-designer/internal/buildinfo.Commit=${COMMIT} -X github.com/kostya/peyote-designer/internal/buildinfo.BuildDate=${BUILD_DATE}" -o dist/peyote-designer-windows-amd64.exe ./cmd/peyote-designer
       - name: Archive Windows build
         shell: pwsh
         run: Compress-Archive -Path dist/peyote-designer-windows-amd64.exe -DestinationPath dist/peyote-designer-windows-amd64.zip

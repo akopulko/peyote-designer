@@ -25,7 +25,7 @@ build-macos:
 build-windows:
 	mkdir -p $(DIST)
 	@if command -v x86_64-w64-mingw32-gcc >/dev/null 2>&1; then \
-		CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc GOOS=windows GOARCH=amd64 go build -ldflags "$(GO_LDFLAGS)" -o $(WINDOWS_BIN) $(CMD); \
+		CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc GOOS=windows GOARCH=amd64 go build -ldflags "-H windowsgui $(GO_LDFLAGS)" -o $(WINDOWS_BIN) $(CMD); \
 	else \
 		echo "Windows build requires x86_64-w64-mingw32-gcc or a native Windows runner."; \
 		exit 1; \

@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          go build -o dist/peyote-designer-windows-amd64.exe ./cmd/peyote-designer
+          go build -ldflags "-H windowsgui" -o dist/peyote-designer-windows-amd64.exe ./cmd/peyote-designer
       - name: Package Windows ZIP
         shell: pwsh
         run: Compress-Archive -Path dist/peyote-designer-windows-amd64.exe -DestinationPath dist/peyote-designer-windows-amd64.zip

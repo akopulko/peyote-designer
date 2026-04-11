@@ -66,7 +66,7 @@ func NewMainWindow(
 	importer *importing.Service,
 ) *MainWindow {
 	window := fyneApp.NewWindow(model.AppName)
-	window.Resize(fyne.NewSize(1280, 840))
+	window.Resize(fyne.NewSize(1100, 720))
 
 	mw := &MainWindow{
 		app:          fyneApp,
@@ -86,7 +86,7 @@ func NewMainWindow(
 	mw.beadMap = render.NewBeadMap(controller)
 	mw.scroll = container.NewScroll(mw.beadMap)
 	mw.scroll.Direction = container.ScrollBoth
-	mw.scroll.SetMinSize(fyne.NewSize(860, 700))
+	mw.scroll.SetMinSize(fyne.NewSize(600, 420))
 	mw.hScroll = widget.NewSlider(0, 1)
 	mw.hScroll.Step = 1
 	mw.hScroll.OnChanged = func(value float64) {
@@ -181,7 +181,7 @@ func (mw *MainWindow) buildToolbar() fyne.CanvasObject {
 	zoomInButton := makeButton(theme.ZoomInIcon(), mw.controller.ZoomIn)
 	zoomOutButton := makeButton(theme.ZoomOutIcon(), mw.controller.ZoomOut)
 
-	return container.NewHBox(
+	documentRow := container.NewHBox(
 		newButton,
 		openButton,
 		saveButton,
@@ -192,7 +192,8 @@ func (mw *MainWindow) buildToolbar() fyne.CanvasObject {
 		mw.selectRowBtn,
 		mw.selectColBtn,
 		mw.removeBtn,
-		widget.NewSeparator(),
+	)
+	toolRow := container.NewHBox(
 		mw.toolButtons[model.ToolSelect],
 		mw.toolButtons[model.ToolPaint],
 		container.NewHBox(colorButton, mw.colorPreview),
@@ -201,13 +202,13 @@ func (mw *MainWindow) buildToolbar() fyne.CanvasObject {
 		widget.NewSeparator(),
 		zoomInButton,
 		zoomOutButton,
-		layout.NewSpacer(),
 	)
+	return container.NewVBox(documentRow, toolRow)
 }
 
 func (mw *MainWindow) buildRightPanel() fyne.CanvasObject {
 	mw.paletteScroll = container.NewVScroll(mw.paletteBox)
-	mw.paletteScroll.SetMinSize(fyne.NewSize(300, 420))
+	mw.paletteScroll.SetMinSize(fyne.NewSize(260, 300))
 	panel := container.NewVBox(
 		widget.NewLabelWithStyle("Project Summary", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		mw.statsLabel,
