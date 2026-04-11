@@ -294,6 +294,12 @@ func (c *Controller) ActivateBead(row, col int) error {
 		c.notify()
 		return nil
 	}
+	c.session.SelectedBead = model.BeadSelection{
+		Active: true,
+		Row:    row,
+		Col:    col,
+	}
+	c.session.SelectedPaletteColorID = ""
 	c.session.Dirty = true
 	c.logger.Info("bead updated", "row", row, "column", col, "tool", c.session.CurrentTool)
 	c.notify()

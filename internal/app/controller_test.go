@@ -138,6 +138,47 @@ func TestControllerPaintCreatesSelectedPaletteEntry(t *testing.T) {
 	if session.SelectedColor.Hex != "#123456" {
 		t.Fatalf("expected selected color hex to be normalized, got %q", session.SelectedColor.Hex)
 	}
+	if !session.SelectedBead.Active || session.SelectedBead.Row != 0 || session.SelectedBead.Col != 0 {
+		t.Fatalf("expected painted bead to be highlighted, got %+v", session.SelectedBead)
+	}
+	if session.SelectedPaletteColorID != "" {
+		t.Fatalf("expected paint action to clear palette highlight, got %q", session.SelectedPaletteColorID)
+	}
+}
+
+func TestControllerMarkAndEraserHighlightLastActionedBead(t *testing.T) {
+	t.Parallel()
+
+	controller, err := NewController(persistence.NewStore(), slog.Default())
+	if err != nil {
+		t.Fatalf("NewController() error = %v", err)
+	}
+	if err := controller.NewDocument(3, 3); err != nil {
+		t.Fatalf("NewDocument() error = %v", err)
+	}
+
+	controller.SetTool(model.ToolMark)
+	if err := controller.ActivateBead(1, 2); err != nil {
+		t.Fatalf("ActivateBead() mark error = %v", err)
+	}
+	if !controller.Session().SelectedBead.Active ||
+		controller.Session().SelectedBead.Row != 1 ||
+		controller.Session().SelectedBead.Col != 2 {
+		t.Fatalf("expected marked bead to be highlighted, got %+v", controller.Session().SelectedBead)
+	}
+
+	controller.SetTool(model.ToolEraser)
+	if err := controller.ActivateBead(2, 1); err != nil {
+		t.Fatalf("ActivateBead() eraser error = %v", err)
+	}
+	if !controller.Session().SelectedBead.Active ||
+		controller.Session().SelectedBead.Row != 2 ||
+		controller.Session().SelectedBead.Col != 1 {
+		t.Fatalf("expected erased bead to be highlighted, got %+v", controller.Session().SelectedBead)
+	}
+	if controller.Session().SelectedPaletteColorID != "" {
+		t.Fatalf("expected eraser action to clear palette highlight, got %q", controller.Session().SelectedPaletteColorID)
+	}
 }
 
 func TestControllerSelectToolSelectsColoredBeadWithoutChangingActiveColor(t *testing.T) {

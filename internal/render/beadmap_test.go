@@ -21,6 +21,9 @@ func TestComputeMetrics(t *testing.T) {
 	if metrics.BeadHeight != expectedHeight {
 		t.Fatalf("expected bead height to keep 1:1.5 ratio, got %+v", metrics)
 	}
+	if metrics.Gap != 3 {
+		t.Fatalf("expected gap to scale from reduced base spacing, got %d", metrics.Gap)
+	}
 }
 
 func TestPeyoteMapSizeIncludesOddRowOffset(t *testing.T) {
@@ -29,10 +32,10 @@ func TestPeyoteMapSizeIncludesOddRowOffset(t *testing.T) {
 	metrics := ComputeMetrics(1)
 	size := PeyoteMapSize(3, 3, metrics)
 
-	if size.X != 74 {
+	if size.X != 65 {
 		t.Fatalf("expected width to include odd-row half stride, got %d", size.X)
 	}
-	if size.Y != 88 {
+	if size.Y != 80 {
 		t.Fatalf("expected height to match row stride, got %d", size.Y)
 	}
 }
@@ -54,7 +57,7 @@ func TestHitTestRejectsGapAndMapsBead(t *testing.T) {
 		t.Fatalf("expected first bead hit, got row=%d col=%d ok=%v", row, col, ok)
 	}
 
-	_, _, ok = beadMap.HitTest(fyne.NewPos(22, 10))
+	_, _, ok = beadMap.HitTest(fyne.NewPos(18, 10))
 	if ok {
 		t.Fatal("expected gap click to be rejected")
 	}
@@ -72,12 +75,12 @@ func TestHitTestMapsStaggeredOddRows(t *testing.T) {
 	}
 
 	beadMap := NewBeadMap(controller)
-	row, col, ok := beadMap.HitTest(fyne.NewPos(22, 44))
+	row, col, ok := beadMap.HitTest(fyne.NewPos(21, 42))
 	if !ok || row != 1 || col != 0 {
 		t.Fatalf("expected shifted odd-row bead hit, got row=%d col=%d ok=%v", row, col, ok)
 	}
 
-	_, _, ok = beadMap.HitTest(fyne.NewPos(4, 44))
+	_, _, ok = beadMap.HitTest(fyne.NewPos(2, 42))
 	if ok {
 		t.Fatal("expected unshifted odd-row position to be rejected")
 	}

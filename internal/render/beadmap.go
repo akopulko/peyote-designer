@@ -19,7 +19,7 @@ import (
 const (
 	baseBeadWidth  = 16
 	baseBeadHeight = 24
-	baseGap        = 4
+	baseGap        = 2
 )
 
 type Metrics struct {

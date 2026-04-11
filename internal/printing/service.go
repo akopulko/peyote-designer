@@ -37,9 +37,9 @@ func (p *FilePrinter) Print(document *model.Document) (string, error) {
 	for rowIndex, row := range document.Beads {
 		marginLeft := 0
 		if rowIndex%2 == 1 {
-			marginLeft = 13
+			marginLeft = 12
 		}
-		fmt.Fprintf(&builder, "<div style=\"display:flex;gap:4px;margin-left:%dpx;margin-bottom:4px;\">", marginLeft)
+		fmt.Fprintf(&builder, "<div style=\"display:flex;gap:2px;margin-left:%dpx;margin-bottom:2px;\">", marginLeft)
 		for _, bead := range row {
 			fill := "#FFFFFF"
 			if bead.ColorID != "" {
