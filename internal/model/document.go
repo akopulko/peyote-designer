@@ -217,6 +217,57 @@ func (d *Document) PaletteColorByID(id string) (PaletteColor, bool) {
 	return PaletteColor{}, false
 }
 
+func (d *Document) PaletteColorByHex(hex string) (PaletteColor, bool) {
+	hex = NormalizeHex(hex)
+	for _, color := range d.Palette {
+		if NormalizeHex(color.Hex) == hex {
+			return color, true
+		}
+	}
+	return PaletteColor{}, false
+}
+
+func (d *Document) ReplacePaletteColor(sourceID, targetHex string) (PaletteColor, bool, error) {
+	targetHex = NormalizeHex(targetHex)
+
+	sourceIndex := -1
+	var source PaletteColor
+	for index, color := range d.Palette {
+		if color.ID == sourceID {
+			sourceIndex = index
+			source = color
+			break
+		}
+	}
+	if sourceIndex < 0 {
+		return PaletteColor{}, false, errors.New("palette color not found")
+	}
+	if NormalizeHex(source.Hex) == targetHex {
+		return source, false, nil
+	}
+
+	for _, target := range d.Palette {
+		if target.ID == source.ID || NormalizeHex(target.Hex) != targetHex {
+			continue
+		}
+		for row := range d.Beads {
+			for col := range d.Beads[row] {
+				if d.Beads[row][col].ColorID == source.ID {
+					d.Beads[row][col].ColorID = target.ID
+				}
+			}
+		}
+		d.Palette = append(d.Palette[:sourceIndex], d.Palette[sourceIndex+1:]...)
+		d.Touch()
+		return target, true, nil
+	}
+
+	d.Palette[sourceIndex].Hex = targetHex
+	d.Palette[sourceIndex].Name = ""
+	d.Touch()
+	return d.Palette[sourceIndex], true, nil
+}
+
 func (d *Document) SetBeadColor(row, col int, colorID string) error {
 	if err := d.validateCoords(row, col); err != nil {
 		return err

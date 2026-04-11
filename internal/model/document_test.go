@@ -47,6 +47,105 @@ func TestPaletteUsageAndStats(t *testing.T) {
 	}
 }
 
+func TestReplacePaletteColorUpdatesSourceForNewHex(t *testing.T) {
+	t.Parallel()
+
+	doc, _ := NewDocument(2, 1)
+	color := doc.EnsurePaletteColor("#112233")
+	color.Name = "Old name"
+	doc.Palette[0] = color
+	if err := doc.SetBeadColor(0, 0, color.ID); err != nil {
+		t.Fatalf("SetBeadColor() error = %v", err)
+	}
+
+	replacement, changed, err := doc.ReplacePaletteColor(color.ID, "#445566")
+	if err != nil {
+		t.Fatalf("ReplacePaletteColor() error = %v", err)
+	}
+	if !changed {
+		t.Fatal("expected replacement to change the document")
+	}
+	if replacement.ID != color.ID || replacement.Index != color.Index {
+		t.Fatalf("expected source color identity to be preserved, got %+v", replacement)
+	}
+	if replacement.Hex != "#445566" {
+		t.Fatalf("expected replacement hex, got %q", replacement.Hex)
+	}
+	if replacement.Name != "" {
+		t.Fatalf("expected stale name to be cleared, got %q", replacement.Name)
+	}
+	if doc.Beads[0][0].ColorID != color.ID {
+		t.Fatalf("expected bead reference to stay on source ID, got %q", doc.Beads[0][0].ColorID)
+	}
+	if len(doc.Palette) != 1 {
+		t.Fatalf("expected palette length to stay 1, got %d", len(doc.Palette))
+	}
+}
+
+func TestReplacePaletteColorMergesExistingHex(t *testing.T) {
+	t.Parallel()
+
+	doc, _ := NewDocument(3, 1)
+	source := doc.EnsurePaletteColor("#112233")
+	target := doc.EnsurePaletteColor("#AABBCC")
+	_ = doc.SetBeadColor(0, 0, source.ID)
+	_ = doc.SetBeadColor(0, 1, target.ID)
+	_ = doc.SetBeadColor(0, 2, source.ID)
+
+	replacement, changed, err := doc.ReplacePaletteColor(source.ID, target.Hex)
+	if err != nil {
+		t.Fatalf("ReplacePaletteColor() error = %v", err)
+	}
+	if !changed {
+		t.Fatal("expected replacement to change the document")
+	}
+	if replacement.ID != target.ID {
+		t.Fatalf("expected target color to remain, got %+v", replacement)
+	}
+	if len(doc.Palette) != 1 {
+		t.Fatalf("expected source color to be removed, got palette %+v", doc.Palette)
+	}
+	if doc.Palette[0].ID != target.ID || doc.Palette[0].Index != target.Index {
+		t.Fatalf("expected target palette entry to be preserved, got %+v", doc.Palette[0])
+	}
+	for col := range doc.Beads[0] {
+		if doc.Beads[0][col].ColorID != target.ID {
+			t.Fatalf("expected bead %d to reference target ID, got %q", col, doc.Beads[0][col].ColorID)
+		}
+	}
+}
+
+func TestReplacePaletteColorSameHexNoop(t *testing.T) {
+	t.Parallel()
+
+	doc, _ := NewDocument(1, 1)
+	color := doc.EnsurePaletteColor("#112233")
+
+	replacement, changed, err := doc.ReplacePaletteColor(color.ID, "#112233")
+	if err != nil {
+		t.Fatalf("ReplacePaletteColor() error = %v", err)
+	}
+	if changed {
+		t.Fatal("expected same-color replacement to be a no-op")
+	}
+	if replacement.ID != color.ID {
+		t.Fatalf("expected original color, got %+v", replacement)
+	}
+	if len(doc.Palette) != 1 {
+		t.Fatalf("expected palette to stay unchanged, got %+v", doc.Palette)
+	}
+}
+
+func TestReplacePaletteColorUnknownSource(t *testing.T) {
+	t.Parallel()
+
+	doc, _ := NewDocument(1, 1)
+
+	if _, _, err := doc.ReplacePaletteColor("missing", "#112233"); err == nil {
+		t.Fatal("expected error for unknown source color")
+	}
+}
+
 func TestRemoveRowAndColumn(t *testing.T) {
 	t.Parallel()
 

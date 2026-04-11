@@ -220,7 +220,10 @@ func (mw *MainWindow) refresh() {
 	mw.statsLabel.SetText(buildStatsText(session.Document))
 	mw.colorPreview.FillColor = renderPreviewColor(session.SelectedColor.Hex)
 	mw.colorPreview.Refresh()
-	mw.paletteBox.Objects = buildPaletteSummary(session.Document)
+	mw.paletteBox.Objects = buildPaletteSummary(
+		session.Document,
+		mw.confirmReplacePaletteColor,
+	)
 	mw.paletteBox.Refresh()
 	mw.beadMap.Refresh()
 	mw.scroll.Refresh()
@@ -412,16 +415,9 @@ func (mw *MainWindow) showSaveDialogWithCompletion(afterSave func()) {
 }
 
 func (mw *MainWindow) showColorDialog() {
-	presets := []string{
-		"#000000", "#FFFFFF", "#D73A31", "#E7A600", "#2DA44E", "#1F6FEB",
-		"#8250DF", "#BF3989", "#F66A0A", "#0969DA", "#0A3069", "#7C3AED",
-		"#DB2777", "#DC2626", "#EA580C", "#CA8A04", "#16A34A", "#0891B2",
-		"#2563EB", "#4F46E5", "#9333EA", "#C026D3", "#BE123C", "#78716C",
-	}
-
 	content := container.NewVBox(
 		widget.NewLabel("Choose a preset colour or open the custom picker."),
-		buildColorSwatchGrid(presets, mw.controller.Session().SelectedColor.Hex, func(hex string) {
+		buildColorSwatchGrid(colorPresets(), mw.controller.Session().SelectedColor.Hex, func(hex string) {
 			mw.controller.SetSelectedColor(hex)
 		}),
 	)
@@ -459,6 +455,59 @@ func (mw *MainWindow) removeSelection() {
 	default:
 		dialog.ShowInformation("Remove", "Select a row or column first.", mw.window)
 	}
+}
+
+func (mw *MainWindow) confirmReplacePaletteColor(item model.PaletteUsage) {
+	beadLabel := "beads"
+	if item.Count == 1 {
+		beadLabel = "bead"
+	}
+	targetHex := model.NormalizeHex(mw.controller.Session().SelectedColor.Hex)
+	targetPreview := canvas.NewRectangle(renderPreviewColor(targetHex))
+	targetPreview.SetMinSize(fyne.NewSize(18, 18))
+	targetLabel := widget.NewLabel(fmt.Sprintf("Replacement: %s", targetHex))
+	setTarget := func(hex string) {
+		targetHex = model.NormalizeHex(hex)
+		targetPreview.FillColor = renderPreviewColor(targetHex)
+		targetPreview.Refresh()
+		targetLabel.SetText(fmt.Sprintf("Replacement: %s", targetHex))
+	}
+
+	message := widget.NewLabel(fmt.Sprintf(
+		"Choose a colour to replace %s on %d %s.",
+		item.Color.Hex,
+		item.Count,
+		beadLabel,
+	))
+	message.Wrapping = fyne.TextWrapWord
+
+	content := container.NewVBox(
+		message,
+		container.NewHBox(targetPreview, targetLabel),
+		buildColorSwatchGrid(colorPresets(), targetHex, setTarget),
+	)
+
+	replaceDialog := dialog.NewCustom("Replace Colour", "Close", content, mw.window)
+	customButton := widget.NewButton("Custom Colour...", func() {
+		dialog.NewColorPicker("Custom Colour", "Choose the replacement colour", func(c color.Color) {
+			r, g, b, _ := c.RGBA()
+			setTarget(fmt.Sprintf("#%02X%02X%02X", uint8(r>>8), uint8(g>>8), uint8(b>>8)))
+		}, mw.window).Show()
+	})
+	replaceButton := widget.NewButton("Replace", func() {
+		if strings.EqualFold(model.NormalizeHex(item.Color.Hex), targetHex) {
+			dialog.ShowInformation("Replace Colour", "Choose a different replacement colour.", mw.window)
+			return
+		}
+		if err := mw.controller.ReplacePaletteColor(item.Color.ID, targetHex); err != nil {
+			dialog.ShowError(err, mw.window)
+			return
+		}
+		replaceDialog.Hide()
+	})
+	replaceButton.Importance = widget.HighImportance
+	content.Add(container.NewHBox(customButton, layout.NewSpacer(), replaceButton))
+	replaceDialog.Show()
 }
 
 func (mw *MainWindow) printDocument() {
@@ -639,7 +688,10 @@ func buildStatsText(document *model.Document) string {
 	return fmt.Sprintf("Total beads: %d\nCompleted beads: %d\nIncomplete beads: %d", stats.Total, stats.Completed, stats.Incomplete)
 }
 
-func buildPaletteSummary(document *model.Document) []fyne.CanvasObject {
+func buildPaletteSummary(
+	document *model.Document,
+	onReplace func(model.PaletteUsage),
+) []fyne.CanvasObject {
 	if document == nil {
 		return []fyne.CanvasObject{widget.NewLabel("No palette data yet.")}
 	}
@@ -653,7 +705,11 @@ func buildPaletteSummary(document *model.Document) []fyne.CanvasObject {
 		swatch := canvas.NewRectangle(renderPreviewColor(item.Color.Hex))
 		swatch.SetMinSize(fyne.NewSize(18, 18))
 		label := widget.NewLabel(fmt.Sprintf("#%d  %s  (%d beads)", item.Color.Index, item.Color.Hex, item.Count))
-		objects = append(objects, container.NewHBox(swatch, label))
+		current := item
+		replaceButton := widget.NewButton("Replace", func() {
+			onReplace(current)
+		})
+		objects = append(objects, container.NewHBox(swatch, label, layout.NewSpacer(), replaceButton))
 	}
 	return objects
 }
@@ -782,4 +838,13 @@ func buildColorSwatchGrid(colors []string, selectedHex string, onTap func(string
 		}))
 	}
 	return container.NewGridWrap(fyne.NewSize(32, 32), items...)
+}
+
+func colorPresets() []string {
+	return []string{
+		"#000000", "#FFFFFF", "#D73A31", "#E7A600", "#2DA44E", "#1F6FEB",
+		"#8250DF", "#BF3989", "#F66A0A", "#0969DA", "#0A3069", "#7C3AED",
+		"#DB2777", "#DC2626", "#EA580C", "#CA8A04", "#16A34A", "#0891B2",
+		"#2563EB", "#4F46E5", "#9333EA", "#C026D3", "#BE123C", "#78716C",
+	}
 }

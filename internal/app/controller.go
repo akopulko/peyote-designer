@@ -192,11 +192,32 @@ func (c *Controller) SetSelectedColor(hex string) {
 		c.notify()
 		return
 	}
-	color := c.session.Document.EnsurePaletteColor(hex)
+	color, ok := c.session.Document.PaletteColorByHex(hex)
+	if !ok {
+		color = model.PaletteColor{Hex: hex}
+	}
+	c.session.SelectedColor = color
+	c.logger.Info("selected colour changed", "color", hex)
+	c.notify()
+}
+
+func (c *Controller) ReplacePaletteColor(sourceColorID, targetHex string) error {
+	if c.session.Document == nil {
+		return errors.New("no active document")
+	}
+	color, changed, err := c.session.Document.ReplacePaletteColor(sourceColorID, targetHex)
+	if err != nil {
+		c.logger.Error("palette color replacement failed", "source_color_id", sourceColorID, "error", err)
+		return err
+	}
+	if !changed {
+		return nil
+	}
 	c.session.SelectedColor = color
 	c.session.Dirty = true
-	c.logger.Info("selected colour changed", "color", color.Hex)
+	c.logger.Info("palette color replaced", "source_color_id", sourceColorID, "target_color", color.Hex)
 	c.notify()
+	return nil
 }
 
 func (c *Controller) ActivateBead(row, col int) error {
@@ -219,6 +240,7 @@ func (c *Controller) ActivateBead(row, col int) error {
 	var err error
 	switch c.session.CurrentTool {
 	case model.ToolPaint:
+		c.session.SelectedColor = c.session.Document.EnsurePaletteColor(c.session.SelectedColor.Hex)
 		err = c.session.Document.SetBeadColor(row, col, c.session.SelectedColor.ID)
 	case model.ToolEraser:
 		err = c.session.Document.ClearBead(row, col)

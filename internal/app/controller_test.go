@@ -86,6 +86,121 @@ func TestControllerSaveLifecycle(t *testing.T) {
 	}
 }
 
+func TestControllerSetSelectedColorDoesNotCreatePaletteEntry(t *testing.T) {
+	t.Parallel()
+
+	controller, err := NewController(persistence.NewStore(), slog.Default())
+	if err != nil {
+		t.Fatalf("NewController() error = %v", err)
+	}
+	if err := controller.NewDocument(2, 2); err != nil {
+		t.Fatalf("NewDocument() error = %v", err)
+	}
+	initialPaletteLength := len(controller.Session().Document.Palette)
+	controller.Session().Dirty = false
+
+	controller.SetSelectedColor("#123456")
+
+	if controller.Session().SelectedColor.ID != "" {
+		t.Fatalf("expected unpainted selected color to have no palette ID, got %+v", controller.Session().SelectedColor)
+	}
+	if len(controller.Session().Document.Palette) != initialPaletteLength {
+		t.Fatalf("expected palette length %d, got %d", initialPaletteLength, len(controller.Session().Document.Palette))
+	}
+	if controller.Session().Dirty {
+		t.Fatal("expected selecting a color to leave document clean")
+	}
+}
+
+func TestControllerPaintCreatesSelectedPaletteEntry(t *testing.T) {
+	t.Parallel()
+
+	controller, err := NewController(persistence.NewStore(), slog.Default())
+	if err != nil {
+		t.Fatalf("NewController() error = %v", err)
+	}
+	if err := controller.NewDocument(2, 2); err != nil {
+		t.Fatalf("NewDocument() error = %v", err)
+	}
+	controller.SetSelectedColor("#123456")
+
+	if err := controller.ActivateBead(0, 0); err != nil {
+		t.Fatalf("ActivateBead() error = %v", err)
+	}
+
+	session := controller.Session()
+	if session.SelectedColor.ID == "" {
+		t.Fatal("expected painting to create a palette-backed selected color")
+	}
+	if session.Document.Beads[0][0].ColorID != session.SelectedColor.ID {
+		t.Fatalf("expected bead to use selected color ID, got %q", session.Document.Beads[0][0].ColorID)
+	}
+	if session.SelectedColor.Hex != "#123456" {
+		t.Fatalf("expected selected color hex to be normalized, got %q", session.SelectedColor.Hex)
+	}
+}
+
+func TestControllerReplacePaletteColor(t *testing.T) {
+	t.Parallel()
+
+	controller, err := NewController(persistence.NewStore(), slog.Default())
+	if err != nil {
+		t.Fatalf("NewController() error = %v", err)
+	}
+	if err := controller.NewDocument(2, 1); err != nil {
+		t.Fatalf("NewDocument() error = %v", err)
+	}
+	doc := controller.Session().Document
+	source := doc.EnsurePaletteColor("#112233")
+	target := doc.EnsurePaletteColor("#445566")
+	_ = doc.SetBeadColor(0, 0, source.ID)
+	_ = doc.SetBeadColor(0, 1, target.ID)
+	controller.Session().Dirty = false
+
+	if err := controller.ReplacePaletteColor(source.ID, target.Hex); err != nil {
+		t.Fatalf("ReplacePaletteColor() error = %v", err)
+	}
+
+	session := controller.Session()
+	if !session.Dirty {
+		t.Fatal("expected replacement to mark document dirty")
+	}
+	if session.SelectedColor.ID != target.ID {
+		t.Fatalf("expected selected color to become target palette color, got %+v", session.SelectedColor)
+	}
+	for col := range session.Document.Beads[0] {
+		if session.Document.Beads[0][col].ColorID != target.ID {
+			t.Fatalf("expected bead %d to reference target ID, got %q", col, session.Document.Beads[0][col].ColorID)
+		}
+	}
+}
+
+func TestControllerReplacePaletteColorSameHexNoop(t *testing.T) {
+	t.Parallel()
+
+	controller, err := NewController(persistence.NewStore(), slog.Default())
+	if err != nil {
+		t.Fatalf("NewController() error = %v", err)
+	}
+	if err := controller.NewDocument(1, 1); err != nil {
+		t.Fatalf("NewDocument() error = %v", err)
+	}
+	source := controller.Session().Document.EnsurePaletteColor("#112233")
+	paletteLength := len(controller.Session().Document.Palette)
+	controller.Session().Dirty = false
+
+	if err := controller.ReplacePaletteColor(source.ID, source.Hex); err != nil {
+		t.Fatalf("ReplacePaletteColor() error = %v", err)
+	}
+
+	if controller.Session().Dirty {
+		t.Fatal("expected same-color replacement to leave document clean")
+	}
+	if len(controller.Session().Document.Palette) != paletteLength {
+		t.Fatalf("expected palette to stay unchanged, got %+v", controller.Session().Document.Palette)
+	}
+}
+
 func TestControllerResizeDocument(t *testing.T) {
 	t.Parallel()
 
