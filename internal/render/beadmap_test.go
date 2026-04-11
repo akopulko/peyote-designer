@@ -2,6 +2,7 @@ package render
 
 import (
 	"log/slog"
+	"math"
 	"testing"
 
 	"fyne.io/fyne/v2"
@@ -16,8 +17,9 @@ func TestComputeMetrics(t *testing.T) {
 	if metrics.BeadWidth <= 16 {
 		t.Fatalf("expected bead width to scale, got %d", metrics.BeadWidth)
 	}
-	if metrics.BeadHeight <= metrics.BeadWidth {
-		t.Fatalf("expected bead height to remain larger than width, got %+v", metrics)
+	expectedHeight := int(math.Round(float64(metrics.BeadWidth) * 1.5))
+	if metrics.BeadHeight != expectedHeight {
+		t.Fatalf("expected bead height to keep 1:1.5 ratio, got %+v", metrics)
 	}
 }
 

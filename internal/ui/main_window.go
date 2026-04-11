@@ -21,6 +21,7 @@ import (
 
 	"github.com/kostya/peyote-designer/internal/app"
 	"github.com/kostya/peyote-designer/internal/buildinfo"
+	"github.com/kostya/peyote-designer/internal/importing"
 	applog "github.com/kostya/peyote-designer/internal/logging"
 	"github.com/kostya/peyote-designer/internal/model"
 	"github.com/kostya/peyote-designer/internal/printing"
@@ -34,6 +35,7 @@ type MainWindow struct {
 	logger        *slog.Logger
 	logBuffer     *applog.Buffer
 	printer       printing.Printer
+	importer      *importing.Service
 	beadMap       *render.BeadMap
 	scroll        *container.Scroll
 	hScroll       *widget.Slider
@@ -54,7 +56,14 @@ type MainWindow struct {
 	removeColItem *fyne.MenuItem
 }
 
-func NewMainWindow(fyneApp fyne.App, controller *app.Controller, logger *slog.Logger, logBuffer *applog.Buffer, printer printing.Printer) *MainWindow {
+func NewMainWindow(
+	fyneApp fyne.App,
+	controller *app.Controller,
+	logger *slog.Logger,
+	logBuffer *applog.Buffer,
+	printer printing.Printer,
+	importer *importing.Service,
+) *MainWindow {
 	window := fyneApp.NewWindow(model.AppName)
 	window.Resize(fyne.NewSize(1280, 840))
 
@@ -65,6 +74,7 @@ func NewMainWindow(fyneApp fyne.App, controller *app.Controller, logger *slog.Lo
 		logger:       logger,
 		logBuffer:    logBuffer,
 		printer:      printer,
+		importer:     importer,
 		statsLabel:   widget.NewLabel(""),
 		paletteBox:   container.NewVBox(),
 		colorPreview: canvas.NewRectangle(theme.Color(theme.ColorNamePrimary)),
@@ -124,7 +134,7 @@ func (mw *MainWindow) buildMenu() *fyne.MainMenu {
 		fyne.NewMenuItem("Open", mw.showOpenDialog),
 		fyne.NewMenuItem("Save", mw.saveDocument),
 		fyne.NewMenuItem("Save As", mw.showSaveDialog),
-		fyne.NewMenuItem("Import", mw.showImportPlaceholder),
+		fyne.NewMenuItem("Import Image", mw.showImportDialog),
 		fyne.NewMenuItem("Print", mw.printDocument),
 	)
 	editMenu := fyne.NewMenu("Edit",
@@ -159,6 +169,7 @@ func (mw *MainWindow) buildToolbar() fyne.CanvasObject {
 	newButton := makeButton(theme.DocumentCreateIcon(), mw.showNewDialog)
 	openButton := makeButton(theme.FolderOpenIcon(), mw.showOpenDialog)
 	saveButton := makeButton(theme.DocumentSaveIcon(), mw.saveDocument)
+	importButton := makeButton(theme.FileImageIcon(), mw.showImportDialog)
 	printButton := makeButton(theme.DocumentPrintIcon(), mw.printDocument)
 	mw.resizeBtn = makeButton(theme.ViewFullScreenIcon(), mw.showResizeDialog)
 	mw.selectRowBtn = makeButton(theme.MoreHorizontalIcon(), func() { mw.controller.SetSelectionTarget(model.SelectionRow) })
@@ -171,6 +182,7 @@ func (mw *MainWindow) buildToolbar() fyne.CanvasObject {
 		newButton,
 		openButton,
 		saveButton,
+		importButton,
 		printButton,
 		mw.resizeBtn,
 		widget.NewSeparator(),
@@ -190,12 +202,14 @@ func (mw *MainWindow) buildToolbar() fyne.CanvasObject {
 }
 
 func (mw *MainWindow) buildRightPanel() fyne.CanvasObject {
+	paletteScroll := container.NewVScroll(mw.paletteBox)
+	paletteScroll.SetMinSize(fyne.NewSize(300, 420))
 	panel := container.NewVBox(
 		widget.NewLabelWithStyle("Project Summary", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		mw.statsLabel,
 		widget.NewSeparator(),
 		widget.NewLabelWithStyle("Palette Summary", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
-		mw.paletteBox,
+		paletteScroll,
 	)
 	return container.NewPadded(container.NewVBox(panel))
 }
@@ -343,20 +357,32 @@ func (mw *MainWindow) showOpenDialog() {
 }
 
 func (mw *MainWindow) saveDocument() {
+	mw.saveDocumentWithCompletion(nil)
+}
+
+func (mw *MainWindow) saveDocumentWithCompletion(afterSave func()) {
 	if !mw.controller.HasDocument() {
 		dialog.ShowInformation("Save", "Create or open a bracelet first.", mw.window)
 		return
 	}
 	if mw.controller.Session().FilePath == "" {
-		mw.showSaveDialog()
+		mw.showSaveDialogWithCompletion(afterSave)
 		return
 	}
 	if err := mw.controller.Save(); err != nil {
 		dialog.ShowError(err, mw.window)
+		return
+	}
+	if afterSave != nil {
+		afterSave()
 	}
 }
 
 func (mw *MainWindow) showSaveDialog() {
+	mw.showSaveDialogWithCompletion(nil)
+}
+
+func (mw *MainWindow) showSaveDialogWithCompletion(afterSave func()) {
 	if !mw.controller.HasDocument() {
 		dialog.ShowInformation("Save", "Create or open a bracelet first.", mw.window)
 		return
@@ -373,6 +399,10 @@ func (mw *MainWindow) showSaveDialog() {
 		_ = writer.Close()
 		if err := mw.controller.SaveAs(path); err != nil {
 			dialog.ShowError(err, mw.window)
+			return
+		}
+		if afterSave != nil {
+			afterSave()
 		}
 	}, mw.window)
 	fd.SetFilter(storage.NewExtensionFileFilter([]string{".pey"}))
@@ -445,10 +475,6 @@ func (mw *MainWindow) printDocument() {
 	if parsed, parseErr := url.Parse("file://" + path); parseErr == nil {
 		_ = mw.app.OpenURL(parsed)
 	}
-}
-
-func (mw *MainWindow) showImportPlaceholder() {
-	dialog.ShowInformation("Import", "Image import is not implemented yet.", mw.window)
 }
 
 func (mw *MainWindow) confirmDiscardIfNeeded(next func()) {

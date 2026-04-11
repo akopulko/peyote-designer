@@ -12,7 +12,7 @@ Peyote Designer uses a layered MVVM-style desktop architecture with a single in-
 - `internal/render`: renders the bead map through a dedicated widget with hit-testing and zoom-aware metrics.
 - `internal/logging`: exposes structured logging and an in-memory ring buffer for the debug log window.
 - `internal/printing`: encapsulates the first-pass print/export workflow.
-- `internal/importing`: placeholder seam for future image import support.
+- `internal/importing`: decodes supported image files and converts selected raster regions into bead-map documents.
 
 ## State Management
 
@@ -32,6 +32,5 @@ UI components subscribe to controller changes and redraw from the session snapsh
 ## Extension Points
 
 - `printing.Printer` isolates print/export details from the UI.
-- `importing.Service` provides a stable placeholder for future image import work.
+- `importing.Service` isolates image decoding, grid sizing, colour reduction, and document generation from the UI flow.
 - `Document.Extensions` reserves schema space for future import metadata without breaking current files.
-

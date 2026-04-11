@@ -18,7 +18,7 @@ import (
 
 const (
 	baseBeadWidth  = 16
-	baseBeadHeight = 32
+	baseBeadHeight = 24
 	baseGap        = 4
 )
 

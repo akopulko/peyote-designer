@@ -9,6 +9,7 @@ import (
 
 	application "github.com/kostya/peyote-designer/internal/app"
 	"github.com/kostya/peyote-designer/internal/buildinfo"
+	"github.com/kostya/peyote-designer/internal/importing"
 	applog "github.com/kostya/peyote-designer/internal/logging"
 	"github.com/kostya/peyote-designer/internal/persistence"
 	"github.com/kostya/peyote-designer/internal/printing"
@@ -27,9 +28,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	importer := importing.NewService()
 	printer := printing.NewFilePrinter()
 
-	window := ui.NewMainWindow(fyneApp, controller, logger, logBuffer, printer)
+	window := ui.NewMainWindow(fyneApp, controller, logger, logBuffer, printer, importer)
 	logger.Info("application started", "version", buildinfo.DisplayVersion(), "commit", buildinfo.Commit, "build_date", buildinfo.BuildDate)
 	window.ShowAndRun()
 }

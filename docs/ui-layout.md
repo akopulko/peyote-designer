@@ -9,7 +9,7 @@
 
 ## Toolbar Groups
 
-- document actions: new, open, save, print
+- document actions: new, open, save, import image, print
 - selection actions: select row, select column, remove row, remove column
 - edit actions: paint, set colour, eraser, mark
 - view actions: zoom in, zoom out
@@ -29,5 +29,4 @@ Shows:
 
 - bead clicks act on the current selection mode first, then on the active tool
 - only one document is open at a time
-- dirty-document prompts gate new and open flows
-
+- dirty-document prompts gate new, open, close, and import flows

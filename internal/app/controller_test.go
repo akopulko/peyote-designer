@@ -115,3 +115,75 @@ func TestControllerResizeDocument(t *testing.T) {
 		t.Fatal("expected resize to mark document dirty")
 	}
 }
+
+func TestControllerZoomOutSupportsLargeMaps(t *testing.T) {
+	t.Parallel()
+
+	controller, err := NewController(persistence.NewStore(), slog.Default())
+	if err != nil {
+		t.Fatalf("NewController() error = %v", err)
+	}
+
+	for range 20 {
+		controller.ZoomOut()
+	}
+
+	if controller.Session().Zoom != MinZoom {
+		t.Fatalf("expected zoom to clamp at %v, got %v", MinZoom, controller.Session().Zoom)
+	}
+	if controller.Session().Zoom > 0.1 {
+		t.Fatalf("expected zoom to support large-map overview, got %v", controller.Session().Zoom)
+	}
+}
+
+func TestControllerLoadImportedDocument(t *testing.T) {
+	t.Parallel()
+
+	controller, err := NewController(persistence.NewStore(), slog.Default())
+	if err != nil {
+		t.Fatalf("NewController() error = %v", err)
+	}
+	notifications := 0
+	controller.Subscribe(func() {
+		notifications++
+	})
+
+	doc, err := model.NewDocument(2, 1)
+	if err != nil {
+		t.Fatalf("NewDocument() error = %v", err)
+	}
+	color := doc.EnsurePaletteColor("#112233")
+	if err := doc.SetBeadColor(0, 0, color.ID); err != nil {
+		t.Fatalf("SetBeadColor() error = %v", err)
+	}
+
+	if err := controller.LoadImportedDocument(doc, "sample.png"); err != nil {
+		t.Fatalf("LoadImportedDocument() error = %v", err)
+	}
+
+	session := controller.Session()
+	if session.Document != doc {
+		t.Fatal("expected imported document to become active")
+	}
+	if session.FilePath != "" {
+		t.Fatalf("expected imported document to have no file path, got %q", session.FilePath)
+	}
+	if !session.Dirty {
+		t.Fatal("expected imported document to be dirty")
+	}
+	if session.CurrentTool != model.ToolPaint {
+		t.Fatalf("expected paint tool, got %q", session.CurrentTool)
+	}
+	if session.Selection.Mode != model.SelectionNone || session.SelectionTarget != model.SelectionNone {
+		t.Fatalf("expected selection to be reset, got selection=%+v target=%q", session.Selection, session.SelectionTarget)
+	}
+	if session.Zoom != 1 {
+		t.Fatalf("expected zoom to reset to 1, got %v", session.Zoom)
+	}
+	if session.SelectedColor.ID != color.ID {
+		t.Fatalf("expected first palette colour to be selected, got %+v", session.SelectedColor)
+	}
+	if notifications != 1 {
+		t.Fatalf("expected one notification, got %d", notifications)
+	}
+}

@@ -13,7 +13,7 @@ The initial implementation includes:
 - row and column selection and removal
 - right-hand project statistics and palette summary
 - structured application logging with an in-app debug log window
-- import placeholder and first-pass print/export flow
+- PNG/JPEG image import and first-pass print/export flow
 
 ## Repository Structure
 
@@ -25,7 +25,7 @@ The initial implementation includes:
 - `internal/ui/`: Fyne window, menus, toolbar, dialogs, and panels
 - `internal/logging/`: structured logger and in-memory debug buffer
 - `internal/printing/`: print/export service
-- `internal/importing/`: import extension point placeholder
+- `internal/importing/`: image import decoding and bead-map conversion
 - `docs/`: architecture, schema, UI, workflow, and roadmap documents
 - `sample-data/`: example `.pey` files
 - `.github/workflows/`: CI, branch build, and tagged release workflows

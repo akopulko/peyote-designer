@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	MinZoom = 0.5
+	MinZoom = 0.1
 	MaxZoom = 3.0
 )
 
@@ -102,6 +102,40 @@ func (c *Controller) LoadDocument(path string) error {
 		Zoom:            chooseZoom(doc.View.Zoom),
 	}
 	c.logger.Info("document loaded", "path", path)
+	c.notify()
+	return nil
+}
+
+func (c *Controller) LoadImportedDocument(doc *model.Document, sourcePath string) error {
+	if doc == nil {
+		return errors.New("no imported document")
+	}
+	if err := doc.Validate(); err != nil {
+		return fmt.Errorf("validate imported document: %w", err)
+	}
+	selectedColor := model.PaletteColor{ID: "", Index: 0, Hex: "#000000"}
+	if len(doc.Palette) > 0 {
+		selectedColor = doc.Palette[0]
+	}
+	c.session = &Session{
+		Document:        doc,
+		FilePath:        "",
+		Dirty:           true,
+		CurrentTool:     model.ToolPaint,
+		SelectionTarget: model.SelectionNone,
+		Selection:       model.Selection{Mode: model.SelectionNone, Index: -1},
+		SelectedColor:   selectedColor,
+		Zoom:            1,
+	}
+	c.logger.Info(
+		"imported document loaded",
+		"source_path",
+		sourcePath,
+		"width",
+		doc.Canvas.Width,
+		"height",
+		doc.Canvas.Height,
+	)
 	c.notify()
 	return nil
 }
