@@ -140,6 +140,99 @@ func TestControllerPaintCreatesSelectedPaletteEntry(t *testing.T) {
 	}
 }
 
+func TestControllerSelectToolSelectsColoredBeadWithoutChangingActiveColor(t *testing.T) {
+	t.Parallel()
+
+	controller, err := NewController(persistence.NewStore(), slog.Default())
+	if err != nil {
+		t.Fatalf("NewController() error = %v", err)
+	}
+	if err := controller.NewDocument(2, 2); err != nil {
+		t.Fatalf("NewDocument() error = %v", err)
+	}
+	doc := controller.Session().Document
+	beadColor := doc.EnsurePaletteColor("#123456")
+	if err := doc.SetBeadColor(1, 1, beadColor.ID); err != nil {
+		t.Fatalf("SetBeadColor() error = %v", err)
+	}
+	controller.SetSelectedColor("#ABCDEF")
+	activeColor := controller.Session().SelectedColor
+	controller.Session().Dirty = false
+
+	controller.SetTool(model.ToolSelect)
+	if err := controller.ActivateBead(1, 1); err != nil {
+		t.Fatalf("ActivateBead() error = %v", err)
+	}
+
+	session := controller.Session()
+	if !session.SelectedBead.Active || session.SelectedBead.Row != 1 || session.SelectedBead.Col != 1 {
+		t.Fatalf("expected bead 1,1 to be selected, got %+v", session.SelectedBead)
+	}
+	if session.SelectedPaletteColorID != beadColor.ID {
+		t.Fatalf("expected selected palette color %q, got %q", beadColor.ID, session.SelectedPaletteColorID)
+	}
+	if session.SelectedColor != activeColor {
+		t.Fatalf("expected active color to stay %+v, got %+v", activeColor, session.SelectedColor)
+	}
+	if session.Dirty {
+		t.Fatal("expected selecting a bead to leave document clean")
+	}
+}
+
+func TestControllerSelectToolSelectsEmptyBeadWithoutPaletteHighlight(t *testing.T) {
+	t.Parallel()
+
+	controller, err := NewController(persistence.NewStore(), slog.Default())
+	if err != nil {
+		t.Fatalf("NewController() error = %v", err)
+	}
+	if err := controller.NewDocument(2, 2); err != nil {
+		t.Fatalf("NewDocument() error = %v", err)
+	}
+	controller.Session().Dirty = false
+	controller.SetTool(model.ToolSelect)
+
+	if err := controller.ActivateBead(0, 1); err != nil {
+		t.Fatalf("ActivateBead() error = %v", err)
+	}
+
+	session := controller.Session()
+	if !session.SelectedBead.Active || session.SelectedBead.Row != 0 || session.SelectedBead.Col != 1 {
+		t.Fatalf("expected bead 0,1 to be selected, got %+v", session.SelectedBead)
+	}
+	if session.SelectedPaletteColorID != "" {
+		t.Fatalf("expected no palette highlight for empty bead, got %q", session.SelectedPaletteColorID)
+	}
+	if session.Dirty {
+		t.Fatal("expected selecting an empty bead to leave document clean")
+	}
+}
+
+func TestControllerSetToolClearsSelectedBead(t *testing.T) {
+	t.Parallel()
+
+	controller, err := NewController(persistence.NewStore(), slog.Default())
+	if err != nil {
+		t.Fatalf("NewController() error = %v", err)
+	}
+	if err := controller.NewDocument(2, 2); err != nil {
+		t.Fatalf("NewDocument() error = %v", err)
+	}
+	controller.SetTool(model.ToolSelect)
+	if err := controller.ActivateBead(0, 0); err != nil {
+		t.Fatalf("ActivateBead() error = %v", err)
+	}
+
+	controller.SetTool(model.ToolPaint)
+
+	if controller.Session().SelectedBead.Active {
+		t.Fatalf("expected selected bead to clear, got %+v", controller.Session().SelectedBead)
+	}
+	if controller.Session().SelectedPaletteColorID != "" {
+		t.Fatalf("expected palette highlight to clear, got %q", controller.Session().SelectedPaletteColorID)
+	}
+}
+
 func TestControllerReplacePaletteColor(t *testing.T) {
 	t.Parallel()
 

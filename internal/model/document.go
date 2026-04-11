@@ -17,6 +17,7 @@ const (
 type Tool string
 
 const (
+	ToolSelect Tool = "select"
 	ToolPaint  Tool = "paint"
 	ToolColor  Tool = "color"
 	ToolEraser Tool = "eraser"
@@ -34,6 +35,12 @@ const (
 type Selection struct {
 	Mode  SelectionMode `json:"mode"`
 	Index int           `json:"index"`
+}
+
+type BeadSelection struct {
+	Active bool
+	Row    int
+	Col    int
 }
 
 type Metadata struct {

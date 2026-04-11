@@ -42,6 +42,7 @@ type MainWindow struct {
 	vScroll       *widget.Slider
 	statsLabel    *widget.Label
 	paletteBox    *fyne.Container
+	paletteScroll *container.Scroll
 	colorPreview  *canvas.Rectangle
 	toolButtons   map[model.Tool]*widget.Button
 	selectRowBtn  *widget.Button
@@ -139,6 +140,7 @@ func (mw *MainWindow) buildMenu() *fyne.MainMenu {
 	)
 	editMenu := fyne.NewMenu("Edit",
 		mw.resizeItem,
+		fyne.NewMenuItem("Select Bead", func() { mw.controller.SetTool(model.ToolSelect) }),
 		fyne.NewMenuItem("Select Row", func() { mw.controller.SetSelectionTarget(model.SelectionRow) }),
 		fyne.NewMenuItem("Select Column", func() { mw.controller.SetSelectionTarget(model.SelectionColumn) }),
 		mw.removeRowItem,
@@ -162,6 +164,7 @@ func (mw *MainWindow) buildToolbar() fyne.CanvasObject {
 		return widget.NewButtonWithIcon("", icon, tapped)
 	}
 
+	mw.toolButtons[model.ToolSelect] = makeButton(theme.SearchIcon(), func() { mw.controller.SetTool(model.ToolSelect) })
 	mw.toolButtons[model.ToolPaint] = makeButton(theme.ColorPaletteIcon(), func() { mw.controller.SetTool(model.ToolPaint) })
 	mw.toolButtons[model.ToolEraser] = makeButton(theme.DeleteIcon(), func() { mw.controller.SetTool(model.ToolEraser) })
 	mw.toolButtons[model.ToolMark] = makeButton(theme.ConfirmIcon(), func() { mw.controller.SetTool(model.ToolMark) })
@@ -190,6 +193,7 @@ func (mw *MainWindow) buildToolbar() fyne.CanvasObject {
 		mw.selectColBtn,
 		mw.removeBtn,
 		widget.NewSeparator(),
+		mw.toolButtons[model.ToolSelect],
 		mw.toolButtons[model.ToolPaint],
 		container.NewHBox(colorButton, mw.colorPreview),
 		mw.toolButtons[model.ToolEraser],
@@ -202,14 +206,14 @@ func (mw *MainWindow) buildToolbar() fyne.CanvasObject {
 }
 
 func (mw *MainWindow) buildRightPanel() fyne.CanvasObject {
-	paletteScroll := container.NewVScroll(mw.paletteBox)
-	paletteScroll.SetMinSize(fyne.NewSize(300, 420))
+	mw.paletteScroll = container.NewVScroll(mw.paletteBox)
+	mw.paletteScroll.SetMinSize(fyne.NewSize(300, 420))
 	panel := container.NewVBox(
 		widget.NewLabelWithStyle("Project Summary", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		mw.statsLabel,
 		widget.NewSeparator(),
 		widget.NewLabelWithStyle("Palette Summary", fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
-		paletteScroll,
+		mw.paletteScroll,
 	)
 	return container.NewPadded(container.NewVBox(panel))
 }
@@ -220,11 +224,14 @@ func (mw *MainWindow) refresh() {
 	mw.statsLabel.SetText(buildStatsText(session.Document))
 	mw.colorPreview.FillColor = renderPreviewColor(session.SelectedColor.Hex)
 	mw.colorPreview.Refresh()
-	mw.paletteBox.Objects = buildPaletteSummary(
+	paletteObjects, selectedPaletteIndex := buildPaletteSummary(
 		session.Document,
+		session.SelectedPaletteColorID,
 		mw.confirmReplacePaletteColor,
 	)
+	mw.paletteBox.Objects = paletteObjects
 	mw.paletteBox.Refresh()
+	mw.scrollPaletteToSelected(selectedPaletteIndex)
 	mw.beadMap.Refresh()
 	mw.scroll.Refresh()
 	mw.updateScrollbars()
@@ -680,6 +687,14 @@ func (mw *MainWindow) applyScrollFromSliders(vertical bool, value float64) {
 	mw.scroll.ScrollToOffset(offset)
 }
 
+func (mw *MainWindow) scrollPaletteToSelected(index int) {
+	if mw.paletteScroll == nil || index < 0 {
+		return
+	}
+	const paletteRowHeight = 40
+	mw.paletteScroll.ScrollToOffset(fyne.NewPos(0, float32(index*paletteRowHeight)))
+}
+
 func buildStatsText(document *model.Document) string {
 	if document == nil {
 		return "No bracelet open.\nUse File > New or File > Open to begin."
@@ -690,18 +705,20 @@ func buildStatsText(document *model.Document) string {
 
 func buildPaletteSummary(
 	document *model.Document,
+	highlightedColorID string,
 	onReplace func(model.PaletteUsage),
-) []fyne.CanvasObject {
+) ([]fyne.CanvasObject, int) {
 	if document == nil {
-		return []fyne.CanvasObject{widget.NewLabel("No palette data yet.")}
+		return []fyne.CanvasObject{widget.NewLabel("No palette data yet.")}, -1
 	}
 	usage := document.PaletteUsage()
 	if len(usage) == 0 {
-		return []fyne.CanvasObject{widget.NewLabel("No colours used yet.")}
+		return []fyne.CanvasObject{widget.NewLabel("No colours used yet.")}, -1
 	}
 
+	selectedIndex := -1
 	objects := make([]fyne.CanvasObject, 0, len(usage))
-	for _, item := range usage {
+	for index, item := range usage {
 		swatch := canvas.NewRectangle(renderPreviewColor(item.Color.Hex))
 		swatch.SetMinSize(fyne.NewSize(18, 18))
 		label := widget.NewLabel(fmt.Sprintf("#%d  %s  (%d beads)", item.Color.Index, item.Color.Hex, item.Count))
@@ -709,9 +726,18 @@ func buildPaletteSummary(
 		replaceButton := widget.NewButton("Replace", func() {
 			onReplace(current)
 		})
-		objects = append(objects, container.NewHBox(swatch, label, layout.NewSpacer(), replaceButton))
+		row := container.NewHBox(swatch, label, layout.NewSpacer(), replaceButton)
+		if item.Color.ID == highlightedColorID {
+			selectedIndex = index
+			highlight := canvas.NewRectangle(color.Transparent)
+			highlight.StrokeColor = color.NRGBA{R: 198, G: 40, B: 40, A: 255}
+			highlight.StrokeWidth = 2
+			objects = append(objects, container.NewStack(highlight, row))
+			continue
+		}
+		objects = append(objects, row)
 	}
-	return objects
+	return objects, selectedIndex
 }
 
 func renderPreviewColor(hex string) color.Color {

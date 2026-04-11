@@ -16,14 +16,16 @@ const (
 )
 
 type Session struct {
-	Document        *model.Document
-	FilePath        string
-	Dirty           bool
-	CurrentTool     model.Tool
-	SelectionTarget model.SelectionMode
-	Selection       model.Selection
-	SelectedColor   model.PaletteColor
-	Zoom            float32
+	Document               *model.Document
+	FilePath               string
+	Dirty                  bool
+	CurrentTool            model.Tool
+	SelectionTarget        model.SelectionMode
+	Selection              model.Selection
+	SelectedBead           model.BeadSelection
+	SelectedPaletteColorID string
+	SelectedColor          model.PaletteColor
+	Zoom                   float32
 }
 
 type Controller struct {
@@ -39,6 +41,7 @@ func NewController(store *persistence.Store, logger *slog.Logger) (*Controller, 
 		CurrentTool:     model.ToolPaint,
 		SelectionTarget: model.SelectionNone,
 		Selection:       model.Selection{Mode: model.SelectionNone, Index: -1},
+		SelectedBead:    model.BeadSelection{Row: -1, Col: -1},
 		SelectedColor:   model.PaletteColor{Hex: "#000000"},
 		Zoom:            1,
 	}
@@ -74,6 +77,7 @@ func (c *Controller) NewDocument(width, height int) error {
 		CurrentTool:     model.ToolPaint,
 		SelectionTarget: model.SelectionNone,
 		Selection:       model.Selection{Mode: model.SelectionNone, Index: -1},
+		SelectedBead:    model.BeadSelection{Row: -1, Col: -1},
 		SelectedColor:   color,
 		Zoom:            1,
 	}
@@ -98,6 +102,7 @@ func (c *Controller) LoadDocument(path string) error {
 		CurrentTool:     model.ToolPaint,
 		SelectionTarget: model.SelectionNone,
 		Selection:       model.Selection{Mode: model.SelectionNone, Index: -1},
+		SelectedBead:    model.BeadSelection{Row: -1, Col: -1},
 		SelectedColor:   selectedColor,
 		Zoom:            chooseZoom(doc.View.Zoom),
 	}
@@ -124,6 +129,7 @@ func (c *Controller) LoadImportedDocument(doc *model.Document, sourcePath string
 		CurrentTool:     model.ToolPaint,
 		SelectionTarget: model.SelectionNone,
 		Selection:       model.Selection{Mode: model.SelectionNone, Index: -1},
+		SelectedBead:    model.BeadSelection{Row: -1, Col: -1},
 		SelectedColor:   selectedColor,
 		Zoom:            1,
 	}
@@ -171,6 +177,7 @@ func (c *Controller) SetTool(tool model.Tool) {
 	c.session.CurrentTool = tool
 	c.session.SelectionTarget = model.SelectionNone
 	c.session.Selection = model.Selection{Mode: model.SelectionNone, Index: -1}
+	c.clearBeadSelection()
 	c.logger.Info("tool selected", "tool", tool)
 	c.notify()
 }
@@ -180,6 +187,7 @@ func (c *Controller) SetSelectionTarget(mode model.SelectionMode) {
 		return
 	}
 	c.session.SelectionTarget = mode
+	c.clearBeadSelection()
 	c.logger.Info("selection target changed", "mode", mode)
 	c.notify()
 }
@@ -220,18 +228,44 @@ func (c *Controller) ReplacePaletteColor(sourceColorID, targetHex string) error 
 	return nil
 }
 
+func (c *Controller) selectBead(row, col int) error {
+	if err := c.session.Document.Validate(); err != nil {
+		return err
+	}
+	if row < 0 || row >= c.session.Document.Canvas.Height {
+		return errors.New("row out of range")
+	}
+	if col < 0 || col >= c.session.Document.Canvas.Width {
+		return errors.New("column out of range")
+	}
+	c.session.SelectedBead = model.BeadSelection{
+		Active: true,
+		Row:    row,
+		Col:    col,
+	}
+	c.session.SelectedPaletteColorID = c.session.Document.Beads[row][col].ColorID
+	return nil
+}
+
+func (c *Controller) clearBeadSelection() {
+	c.session.SelectedBead = model.BeadSelection{Row: -1, Col: -1}
+	c.session.SelectedPaletteColorID = ""
+}
+
 func (c *Controller) ActivateBead(row, col int) error {
 	if c.session.Document == nil {
 		return errors.New("no active document")
 	}
 	if c.session.SelectionTarget == model.SelectionRow {
 		c.session.Selection = model.Selection{Mode: model.SelectionRow, Index: row}
+		c.clearBeadSelection()
 		c.logger.Info("row selected", "row", row)
 		c.notify()
 		return nil
 	}
 	if c.session.SelectionTarget == model.SelectionColumn {
 		c.session.Selection = model.Selection{Mode: model.SelectionColumn, Index: col}
+		c.clearBeadSelection()
 		c.logger.Info("column selected", "column", col)
 		c.notify()
 		return nil
@@ -239,6 +273,8 @@ func (c *Controller) ActivateBead(row, col int) error {
 
 	var err error
 	switch c.session.CurrentTool {
+	case model.ToolSelect:
+		err = c.selectBead(row, col)
 	case model.ToolPaint:
 		c.session.SelectedColor = c.session.Document.EnsurePaletteColor(c.session.SelectedColor.Hex)
 		err = c.session.Document.SetBeadColor(row, col, c.session.SelectedColor.ID)
@@ -252,6 +288,11 @@ func (c *Controller) ActivateBead(row, col int) error {
 	if err != nil {
 		c.logger.Error("bead activation failed", "row", row, "column", col, "error", err)
 		return err
+	}
+	if c.session.CurrentTool == model.ToolSelect {
+		c.logger.Info("bead selected", "row", row, "column", col)
+		c.notify()
+		return nil
 	}
 	c.session.Dirty = true
 	c.logger.Info("bead updated", "row", row, "column", col, "tool", c.session.CurrentTool)
@@ -270,6 +311,7 @@ func (c *Controller) RemoveSelectedRow() error {
 		return err
 	}
 	c.session.Selection = model.Selection{Mode: model.SelectionNone, Index: -1}
+	c.clearBeadSelection()
 	c.session.Dirty = true
 	c.logger.Info("row removed")
 	c.notify()
@@ -287,6 +329,7 @@ func (c *Controller) RemoveSelectedColumn() error {
 		return err
 	}
 	c.session.Selection = model.Selection{Mode: model.SelectionNone, Index: -1}
+	c.clearBeadSelection()
 	c.session.Dirty = true
 	c.logger.Info("column removed")
 	c.notify()
@@ -302,6 +345,7 @@ func (c *Controller) ResizeDocument(width, height int) error {
 	}
 	c.session.SelectionTarget = model.SelectionNone
 	c.session.Selection = model.Selection{Mode: model.SelectionNone, Index: -1}
+	c.clearBeadSelection()
 	c.session.Dirty = true
 	c.logger.Info("document resized", "width", width, "height", height)
 	c.notify()

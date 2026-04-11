@@ -117,6 +117,9 @@ func (m *BeadMap) render(width, height int) image.Image {
 			if session.Selection.Mode == model.SelectionColumn && session.Selection.Index == col {
 				DrawPeyoteBeadOutline(img, rect, color.NRGBA{R: 198, G: 40, B: 40, A: 255}, 3)
 			}
+			if session.SelectedBead.Active && session.SelectedBead.Row == row && session.SelectedBead.Col == col {
+				DrawPeyoteBeadOutline(img, rect, color.NRGBA{R: 198, G: 40, B: 40, A: 255}, 3)
+			}
 			if bead.Completed {
 				drawCross(img, rect, crossColor(fill))
 			}
