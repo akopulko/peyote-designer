@@ -20,6 +20,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/kostya/peyote-designer/internal/importing"
+	"github.com/kostya/peyote-designer/internal/render"
 )
 
 const (
@@ -433,7 +434,14 @@ func (w *importPreviewWidget) render(width, height int) image.Image {
 	draw.Draw(dst, dst.Bounds(), &image.Uniform{C: color.NRGBA{R: 245, G: 245, B: 245, A: 255}}, image.Point{}, draw.Src)
 	display := fitRect(fyne.NewSize(float32(width), float32(height)), w.selection.Dx(), w.selection.Dy())
 	drawImage(dst, w.source.Image, w.selection, display)
-	drawGrid(dst, display, w.gridWidth, w.gridHigh)
+	render.DrawPeyoteOverlay(
+		dst,
+		display,
+		w.gridWidth,
+		w.gridHigh,
+		color.NRGBA{R: 0, G: 72, B: 140, A: 255},
+		color.NRGBA{R: 255, G: 255, B: 255, A: 255},
+	)
 	return dst
 }
 
@@ -483,26 +491,6 @@ func drawSelectionOverlay(dst *image.RGBA, imageBounds image.Rectangle, display 
 	strokeRectUI(dst, selected, color.NRGBA{R: 20, G: 120, B: 220, A: 255}, 3)
 }
 
-func drawGrid(dst *image.RGBA, rect image.Rectangle, columns, rows int) {
-	if columns <= 0 || rows <= 0 || rect.Dx() <= 0 || rect.Dy() <= 0 {
-		return
-	}
-	halo := color.NRGBA{R: 255, G: 255, B: 255, A: 255}
-	stroke := color.NRGBA{R: 0, G: 72, B: 140, A: 255}
-	for col := 0; col <= columns; col++ {
-		x := rect.Min.X + int(math.Round(float64(col)*float64(rect.Dx())/float64(columns)))
-		drawLineThicknessUI(dst, x, rect.Min.Y, x, rect.Max.Y-1, halo, 3)
-		drawLineThicknessUI(dst, x, rect.Min.Y, x, rect.Max.Y-1, stroke, 1)
-	}
-	for row := 0; row <= rows; row++ {
-		y := rect.Min.Y + int(math.Round(float64(row)*float64(rect.Dy())/float64(rows)))
-		drawLineThicknessUI(dst, rect.Min.X, y, rect.Max.X-1, y, halo, 3)
-		drawLineThicknessUI(dst, rect.Min.X, y, rect.Max.X-1, y, stroke, 1)
-	}
-	strokeRectUI(dst, rect, halo, 4)
-	strokeRectUI(dst, rect, stroke, 2)
-}
-
 func fillOverlay(dst *image.RGBA, rect image.Rectangle, overlay color.NRGBA) {
 	rect = rect.Intersect(dst.Bounds())
 	for y := rect.Min.Y; y < rect.Max.Y; y++ {
@@ -541,35 +529,6 @@ func strokeRectUI(dst *image.RGBA, rect image.Rectangle, stroke color.NRGBA, thi
 	}
 }
 
-func drawLineUI(dst *image.RGBA, x1, y1, x2, y2 int, stroke color.NRGBA) {
-	if x1 == x2 {
-		from := minUIInt(y1, y2)
-		to := maxUIInt(y1, y2)
-		for y := from; y <= to; y++ {
-			setPixel(dst, x1, y, stroke)
-		}
-		return
-	}
-	from := minUIInt(x1, x2)
-	to := maxUIInt(x1, x2)
-	for x := from; x <= to; x++ {
-		setPixel(dst, x, y1, stroke)
-	}
-}
-
-func drawLineThicknessUI(dst *image.RGBA, x1, y1, x2, y2 int, stroke color.NRGBA, thickness int) {
-	radius := thickness / 2
-	if x1 == x2 {
-		for offset := -radius; offset <= radius; offset++ {
-			drawLineUI(dst, x1+offset, y1, x2+offset, y2, stroke)
-		}
-		return
-	}
-	for offset := -radius; offset <= radius; offset++ {
-		drawLineUI(dst, x1, y1+offset, x2, y2+offset, stroke)
-	}
-}
-
 func setPixel(dst *image.RGBA, x, y int, c color.NRGBA) {
 	if image.Pt(x, y).In(dst.Bounds()) {
 		dst.Set(x, y, c)
@@ -584,13 +543,6 @@ func clampUIInt(value, min, max int) int {
 		return max
 	}
 	return value
-}
-
-func minUIInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 func maxUIInt(a, b int) int {

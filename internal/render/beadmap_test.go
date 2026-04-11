@@ -23,6 +23,20 @@ func TestComputeMetrics(t *testing.T) {
 	}
 }
 
+func TestPeyoteMapSizeIncludesOddRowOffset(t *testing.T) {
+	t.Parallel()
+
+	metrics := ComputeMetrics(1)
+	size := PeyoteMapSize(3, 3, metrics)
+
+	if size.X != 74 {
+		t.Fatalf("expected width to include odd-row half stride, got %d", size.X)
+	}
+	if size.Y != 88 {
+		t.Fatalf("expected height to match row stride, got %d", size.Y)
+	}
+}
+
 func TestHitTestRejectsGapAndMapsBead(t *testing.T) {
 	t.Parallel()
 
@@ -43,5 +57,28 @@ func TestHitTestRejectsGapAndMapsBead(t *testing.T) {
 	_, _, ok = beadMap.HitTest(fyne.NewPos(22, 10))
 	if ok {
 		t.Fatal("expected gap click to be rejected")
+	}
+}
+
+func TestHitTestMapsStaggeredOddRows(t *testing.T) {
+	t.Parallel()
+
+	controller, err := application.NewController(persistence.NewStore(), slog.Default())
+	if err != nil {
+		t.Fatalf("NewController() error = %v", err)
+	}
+	if err := controller.NewDocument(3, 3); err != nil {
+		t.Fatalf("NewDocument() error = %v", err)
+	}
+
+	beadMap := NewBeadMap(controller)
+	row, col, ok := beadMap.HitTest(fyne.NewPos(22, 44))
+	if !ok || row != 1 || col != 0 {
+		t.Fatalf("expected shifted odd-row bead hit, got row=%d col=%d ok=%v", row, col, ok)
+	}
+
+	_, _, ok = beadMap.HitTest(fyne.NewPos(4, 44))
+	if ok {
+		t.Fatal("expected unshifted odd-row position to be rejected")
 	}
 }

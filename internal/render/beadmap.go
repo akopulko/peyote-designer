@@ -71,9 +71,8 @@ func (m *BeadMap) MinSize() fyne.Size {
 		return fyne.NewSize(320, 240)
 	}
 	metrics := ComputeMetrics(session.Zoom)
-	width := session.Document.Canvas.Width*(metrics.BeadWidth+metrics.Gap) + metrics.Gap
-	height := session.Document.Canvas.Height*(metrics.BeadHeight+metrics.Gap) + metrics.Gap
-	return fyne.NewSize(float32(width), float32(height))
+	size := PeyoteMapSize(session.Document.Canvas.Width, session.Document.Canvas.Height, metrics)
+	return fyne.NewSize(float32(size.X), float32(size.Y))
 }
 
 func (m *BeadMap) HitTest(position fyne.Position) (int, int, bool) {
@@ -82,24 +81,7 @@ func (m *BeadMap) HitTest(position fyne.Position) (int, int, bool) {
 		return 0, 0, false
 	}
 	metrics := ComputeMetrics(session.Zoom)
-	strideX := float32(metrics.BeadWidth + metrics.Gap)
-	strideY := float32(metrics.BeadHeight + metrics.Gap)
-	offsetX := position.X - float32(metrics.Gap)
-	offsetY := position.Y - float32(metrics.Gap)
-	if offsetX < 0 || offsetY < 0 {
-		return 0, 0, false
-	}
-	col := int(offsetX / strideX)
-	row := int(offsetY / strideY)
-	if row < 0 || col < 0 || row >= session.Document.Canvas.Height || col >= session.Document.Canvas.Width {
-		return 0, 0, false
-	}
-	localX := offsetX - float32(col)*strideX
-	localY := offsetY - float32(row)*strideY
-	if localX > float32(metrics.BeadWidth) || localY > float32(metrics.BeadHeight) {
-		return 0, 0, false
-	}
-	return row, col, true
+	return HitTestPeyote(position, session.Document.Canvas.Width, session.Document.Canvas.Height, metrics)
 }
 
 func (m *BeadMap) render(width, height int) image.Image {
@@ -120,9 +102,7 @@ func (m *BeadMap) render(width, height int) image.Image {
 	metrics := computeMetricsScaled(session.Zoom, scale)
 	for row := 0; row < session.Document.Canvas.Height; row++ {
 		for col := 0; col < session.Document.Canvas.Width; col++ {
-			x := metrics.Gap + col*(metrics.BeadWidth+metrics.Gap)
-			y := metrics.Gap + row*(metrics.BeadHeight+metrics.Gap)
-			rect := image.Rect(x, y, x+metrics.BeadWidth, y+metrics.BeadHeight)
+			rect := PeyoteBeadBounds(row, col, metrics)
 			fill := color.NRGBA{R: 255, G: 255, B: 255, A: 255}
 			bead := session.Document.Beads[row][col]
 			if bead.ColorID != "" {
@@ -130,13 +110,12 @@ func (m *BeadMap) render(width, height int) image.Image {
 					fill = parseHexColor(paletteColor.Hex)
 				}
 			}
-			fillRect(img, rect, fill)
-			strokeRect(img, rect, color.NRGBA{R: 80, G: 80, B: 80, A: 255})
+			DrawPeyoteBead(img, rect, fill, color.NRGBA{R: 80, G: 80, B: 80, A: 255})
 			if session.Selection.Mode == model.SelectionRow && session.Selection.Index == row {
-				strokeRectThickness(img, rect, color.NRGBA{R: 198, G: 40, B: 40, A: 255}, 3)
+				DrawPeyoteBeadOutline(img, rect, color.NRGBA{R: 198, G: 40, B: 40, A: 255}, 3)
 			}
 			if session.Selection.Mode == model.SelectionColumn && session.Selection.Index == col {
-				strokeRectThickness(img, rect, color.NRGBA{R: 198, G: 40, B: 40, A: 255}, 3)
+				DrawPeyoteBeadOutline(img, rect, color.NRGBA{R: 198, G: 40, B: 40, A: 255}, 3)
 			}
 			if bead.Completed {
 				drawCross(img, rect, crossColor(fill))
@@ -144,31 +123,6 @@ func (m *BeadMap) render(width, height int) image.Image {
 		}
 	}
 	return img
-}
-
-func fillRect(img *image.RGBA, rect image.Rectangle, fill color.NRGBA) {
-	draw.Draw(img, rect, &image.Uniform{C: fill}, image.Point{}, draw.Src)
-}
-
-func strokeRect(img *image.RGBA, rect image.Rectangle, stroke color.NRGBA) {
-	for x := rect.Min.X; x < rect.Max.X; x++ {
-		img.Set(x, rect.Min.Y, stroke)
-		img.Set(x, rect.Max.Y-1, stroke)
-	}
-	for y := rect.Min.Y; y < rect.Max.Y; y++ {
-		img.Set(rect.Min.X, y, stroke)
-		img.Set(rect.Max.X-1, y, stroke)
-	}
-}
-
-func strokeRectThickness(img *image.RGBA, rect image.Rectangle, stroke color.NRGBA, thickness int) {
-	for i := 0; i < thickness; i++ {
-		inner := image.Rect(rect.Min.X+i, rect.Min.Y+i, rect.Max.X-i, rect.Max.Y-i)
-		if inner.Dx() <= 0 || inner.Dy() <= 0 {
-			return
-		}
-		strokeRect(img, inner, stroke)
-	}
 }
 
 func drawCross(img *image.RGBA, rect image.Rectangle, stroke color.NRGBA) {
