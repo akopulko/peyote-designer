@@ -47,11 +47,13 @@ jobs:
             setup-go-arch: x64
             cc: gcc
             cxx: g++
+            cgo-cflags: ""
             runner: windows-latest
           - arch: arm64
             setup-go-arch: arm64
             cc: clang
             cxx: clang++
+            cgo-cflags: -DWINBOOL=BOOL
             runner: windows-11-arm
     steps:
       - uses: actions/checkout@v5
@@ -70,6 +72,7 @@ jobs:
         env:
           CC: ${{ matrix.cc }}
           CXX: ${{ matrix.cxx }}
+          CGO_CFLAGS: ${{ matrix.cgo-cflags }}
         run: |
           mkdir -p dist
           go build -ldflags "-H windowsgui -X github.com/kostya/peyote-designer/internal/buildinfo.Version=${VERSION} -X github.com/kostya/peyote-designer/internal/buildinfo.Commit=${COMMIT} -X github.com/kostya/peyote-designer/internal/buildinfo.BuildDate=${BUILD_DATE}" -o dist/peyote-designer-windows-${{ matrix.arch }}.exe ./cmd/peyote-designer
