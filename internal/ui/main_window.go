@@ -160,26 +160,26 @@ func (mw *MainWindow) buildMenu() *fyne.MainMenu {
 }
 
 func (mw *MainWindow) buildToolbar() fyne.CanvasObject {
-	makeButton := func(icon fyne.Resource, tapped func()) *widget.Button {
-		return widget.NewButtonWithIcon("", icon, tapped)
+	makeButton := func(label string, icon fyne.Resource, tapped func()) *widget.Button {
+		return widget.NewButtonWithIcon(label, icon, tapped)
 	}
 
-	mw.toolButtons[model.ToolSelect] = makeButton(theme.SearchIcon(), func() { mw.controller.SetTool(model.ToolSelect) })
-	mw.toolButtons[model.ToolPaint] = makeButton(theme.ColorPaletteIcon(), func() { mw.controller.SetTool(model.ToolPaint) })
-	mw.toolButtons[model.ToolEraser] = makeButton(theme.DeleteIcon(), func() { mw.controller.SetTool(model.ToolEraser) })
-	mw.toolButtons[model.ToolMark] = makeButton(theme.ConfirmIcon(), func() { mw.controller.SetTool(model.ToolMark) })
-	colorButton := makeButton(theme.ColorChromaticIcon(), mw.showColorDialog)
-	newButton := makeButton(theme.DocumentCreateIcon(), mw.showNewDialog)
-	openButton := makeButton(theme.FolderOpenIcon(), mw.showOpenDialog)
-	saveButton := makeButton(theme.DocumentSaveIcon(), mw.saveDocument)
-	importButton := makeButton(theme.FileImageIcon(), mw.showImportDialog)
-	printButton := makeButton(theme.DocumentPrintIcon(), mw.printDocument)
-	mw.resizeBtn = makeButton(theme.ViewFullScreenIcon(), mw.showResizeDialog)
-	mw.selectRowBtn = makeButton(theme.MoreHorizontalIcon(), func() { mw.controller.SetSelectionTarget(model.SelectionRow) })
-	mw.selectColBtn = makeButton(theme.MoreVerticalIcon(), func() { mw.controller.SetSelectionTarget(model.SelectionColumn) })
-	mw.removeBtn = makeButton(theme.CancelIcon(), mw.removeSelection)
-	zoomInButton := makeButton(theme.ZoomInIcon(), mw.controller.ZoomIn)
-	zoomOutButton := makeButton(theme.ZoomOutIcon(), mw.controller.ZoomOut)
+	mw.toolButtons[model.ToolSelect] = makeButton("Select Bead", theme.SearchIcon(), func() { mw.controller.SetTool(model.ToolSelect) })
+	mw.toolButtons[model.ToolPaint] = makeButton("Paint", theme.ColorPaletteIcon(), func() { mw.controller.SetTool(model.ToolPaint) })
+	mw.toolButtons[model.ToolEraser] = makeButton("Eraser", theme.DeleteIcon(), func() { mw.controller.SetTool(model.ToolEraser) })
+	mw.toolButtons[model.ToolMark] = makeButton("Mark", theme.ConfirmIcon(), func() { mw.controller.SetTool(model.ToolMark) })
+	colorButton := makeButton("Set Colour", theme.ColorChromaticIcon(), mw.showColorDialog)
+	newButton := makeButton("New", theme.DocumentCreateIcon(), mw.showNewDialog)
+	openButton := makeButton("Open", theme.FolderOpenIcon(), mw.showOpenDialog)
+	saveButton := makeButton("Save", theme.DocumentSaveIcon(), mw.saveDocument)
+	importButton := makeButton("Import", theme.FileImageIcon(), mw.showImportDialog)
+	printButton := makeButton("Print", theme.DocumentPrintIcon(), mw.printDocument)
+	mw.resizeBtn = makeButton("Resize", theme.ViewFullScreenIcon(), mw.showResizeDialog)
+	mw.selectRowBtn = makeButton("Select Row", theme.MoreHorizontalIcon(), func() { mw.controller.SetSelectionTarget(model.SelectionRow) })
+	mw.selectColBtn = makeButton("Select Column", theme.MoreVerticalIcon(), func() { mw.controller.SetSelectionTarget(model.SelectionColumn) })
+	mw.removeBtn = makeButton("Remove", theme.CancelIcon(), mw.removeSelection)
+	zoomInButton := makeButton("Zoom In", theme.ZoomInIcon(), mw.controller.ZoomIn)
+	zoomOutButton := makeButton("Zoom Out", theme.ZoomOutIcon(), mw.controller.ZoomOut)
 
 	documentRow := container.NewHBox(
 		newButton,
@@ -188,13 +188,14 @@ func (mw *MainWindow) buildToolbar() fyne.CanvasObject {
 		importButton,
 		printButton,
 		mw.resizeBtn,
-		widget.NewSeparator(),
+	)
+	selectionRow := container.NewHBox(
 		mw.selectRowBtn,
 		mw.selectColBtn,
 		mw.removeBtn,
+		mw.toolButtons[model.ToolSelect],
 	)
 	toolRow := container.NewHBox(
-		mw.toolButtons[model.ToolSelect],
 		mw.toolButtons[model.ToolPaint],
 		container.NewHBox(colorButton, mw.colorPreview),
 		mw.toolButtons[model.ToolEraser],
@@ -203,7 +204,7 @@ func (mw *MainWindow) buildToolbar() fyne.CanvasObject {
 		zoomInButton,
 		zoomOutButton,
 	)
-	return container.NewVBox(documentRow, toolRow)
+	return container.NewVBox(documentRow, selectionRow, toolRow)
 }
 
 func (mw *MainWindow) buildRightPanel() fyne.CanvasObject {

@@ -2,7 +2,7 @@
 
 ## Main Window
 
-- top grouped icon-only toolbar with two rows for scaled Windows displays
+- top grouped icon-and-text toolbar with three rows for scaled Windows displays
 - left scrollable bead map canvas
 - right information panel
 - native-style application menu
@@ -14,7 +14,7 @@
 - edit actions: paint, set colour, eraser, mark
 - view actions: zoom in, zoom out
 
-The toolbar is split into a document/selection row and a bead/tool row so actions remain visible and clickable when the app is maximized on high-DPI Windows displays.
+The toolbar is split into document, selection, and bead/tool rows so labelled actions remain visible and clickable when the app is maximized on high-DPI Windows displays.
 
 The active paint tool and active selection mode are visually emphasized.
 
