@@ -37,9 +37,13 @@ jobs:
         include:
           - arch: amd64
             setup-go-arch: x64
+            cc: gcc
+            cxx: g++
             runner: windows-latest
           - arch: arm64
             setup-go-arch: arm64
+            cc: clang
+            cxx: clang++
             runner: windows-11-arm
     steps:
       - uses: actions/checkout@v5
@@ -49,6 +53,9 @@ jobs:
           architecture: ${{ matrix.setup-go-arch }}
       - name: Build Windows binary
         shell: bash
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
         run: |
           mkdir -p dist
           go build -ldflags "-H windowsgui" -o dist/peyote-designer-windows-${{ matrix.arch }}.exe ./cmd/peyote-designer
