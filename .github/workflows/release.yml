@@ -37,12 +37,24 @@ jobs:
           path: dist/peyote-designer-macos-arm64.dmg
 
   build-windows:
-    runs-on: windows-latest
+    name: Build Windows (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            setup-go-arch: x64
+            runner: windows-latest
+          - arch: arm64
+            setup-go-arch: arm64
+            runner: windows-11-arm
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+          architecture: ${{ matrix.setup-go-arch }}
       - name: Resolve build metadata
         shell: bash
         run: |
@@ -53,14 +65,14 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          go build -ldflags "-H windowsgui -X github.com/kostya/peyote-designer/internal/buildinfo.Version=${VERSION} -X github.com/kostya/peyote-designer/internal/buildinfo.Commit=${COMMIT} -X github.com/kostya/peyote-designer/internal/buildinfo.BuildDate=${BUILD_DATE}" -o dist/peyote-designer-windows-amd64.exe ./cmd/peyote-designer
+          go build -ldflags "-H windowsgui -X github.com/kostya/peyote-designer/internal/buildinfo.Version=${VERSION} -X github.com/kostya/peyote-designer/internal/buildinfo.Commit=${COMMIT} -X github.com/kostya/peyote-designer/internal/buildinfo.BuildDate=${BUILD_DATE}" -o dist/peyote-designer-windows-${{ matrix.arch }}.exe ./cmd/peyote-designer
       - name: Archive Windows build
         shell: pwsh
-        run: Compress-Archive -Path dist/peyote-designer-windows-amd64.exe -DestinationPath dist/peyote-designer-windows-amd64.zip
+        run: Compress-Archive -Path dist/peyote-designer-windows-${{ matrix.arch }}.exe -DestinationPath dist/peyote-designer-windows-${{ matrix.arch }}.zip
       - uses: actions/upload-artifact@v6
         with:
-          name: release-windows
-          path: dist/peyote-designer-windows-amd64.zip
+          name: release-windows-${{ matrix.arch }}
+          path: dist/peyote-designer-windows-${{ matrix.arch }}.zip
 
   publish:
     runs-on: ubuntu-latest
@@ -77,4 +89,5 @@ jobs:
           generate_release_notes: true
           files: |
             release-assets/release-macos/peyote-designer-macos-arm64.dmg
-            release-assets/release-windows/peyote-designer-windows-amd64.zip
+            release-assets/release-windows-amd64/peyote-designer-windows-amd64.zip
+            release-assets/release-windows-arm64/peyote-designer-windows-arm64.zip

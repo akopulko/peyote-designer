@@ -29,21 +29,33 @@ jobs:
           path: dist/peyote-designer-macos-arm64.dmg
 
   build-windows:
-    runs-on: windows-latest
+    name: Build Windows (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            setup-go-arch: x64
+            runner: windows-latest
+          - arch: arm64
+            setup-go-arch: arm64
+            runner: windows-11-arm
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+          architecture: ${{ matrix.setup-go-arch }}
       - name: Build Windows binary
         shell: bash
         run: |
           mkdir -p dist
-          go build -ldflags "-H windowsgui" -o dist/peyote-designer-windows-amd64.exe ./cmd/peyote-designer
+          go build -ldflags "-H windowsgui" -o dist/peyote-designer-windows-${{ matrix.arch }}.exe ./cmd/peyote-designer
       - name: Package Windows ZIP
         shell: pwsh
-        run: Compress-Archive -Path dist/peyote-designer-windows-amd64.exe -DestinationPath dist/peyote-designer-windows-amd64.zip
+        run: Compress-Archive -Path dist/peyote-designer-windows-${{ matrix.arch }}.exe -DestinationPath dist/peyote-designer-windows-${{ matrix.arch }}.zip
       - uses: actions/upload-artifact@v6
         with:
-          name: peyote-designer-windows-amd64.zip
-          path: dist/peyote-designer-windows-amd64.zip
+          name: peyote-designer-windows-${{ matrix.arch }}.zip
+          path: dist/peyote-designer-windows-${{ matrix.arch }}.zip

@@ -76,6 +76,7 @@ GitHub Actions handles three workflows:
 - tagged releases for `v*`
 
 Tagged releases build a macOS `.dmg` and a Windows `.zip` on their respective runners and attach both artifacts to the GitHub release.
+Windows release builds provide separate `amd64` and `arm64` `.zip` downloads.
 Release tags remain `v*`, and shortened tags such as `v0.1` are normalized to `0.1.0` for embedded build metadata and macOS bundle versioning.
 
 ## File Format Overview
