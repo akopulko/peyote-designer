@@ -424,23 +424,12 @@ func (mw *MainWindow) showSaveDialogWithCompletion(afterSave func()) {
 }
 
 func (mw *MainWindow) showColorDialog() {
-	content := container.NewVBox(
-		widget.NewLabel("Choose a preset colour or open the custom picker."),
-		buildColorSwatchGrid(colorPresets(), mw.controller.Session().SelectedColor.Hex, func(hex string) {
-			mw.controller.SetSelectedColor(hex)
-		}),
+	mw.showAdvancedColorPicker(
+		"Select Colour",
+		"Choose the active bead colour",
+		mw.controller.Session().SelectedColor.Hex,
+		mw.controller.SetSelectedColor,
 	)
-
-	customDialog := dialog.NewCustom("Select Colour", "Close", content, mw.window)
-	customButton := widget.NewButton("Custom Colour…", func() {
-		dialog.NewColorPicker("Custom Colour", "Choose the active bead colour", func(c color.Color) {
-			r, g, b, _ := c.RGBA()
-			mw.controller.SetSelectedColor(fmt.Sprintf("#%02X%02X%02X", uint8(r>>8), uint8(g>>8), uint8(b>>8)))
-			customDialog.Hide()
-		}, mw.window).Show()
-	})
-	content.Add(customButton)
-	customDialog.Show()
 }
 
 func (mw *MainWindow) removeRow() {
@@ -498,10 +487,12 @@ func (mw *MainWindow) confirmReplacePaletteColor(item model.PaletteUsage) {
 
 	replaceDialog := dialog.NewCustom("Replace Colour", "Close", content, mw.window)
 	customButton := widget.NewButton("Custom Colour...", func() {
-		dialog.NewColorPicker("Custom Colour", "Choose the replacement colour", func(c color.Color) {
-			r, g, b, _ := c.RGBA()
-			setTarget(fmt.Sprintf("#%02X%02X%02X", uint8(r>>8), uint8(g>>8), uint8(b>>8)))
-		}, mw.window).Show()
+		mw.showAdvancedColorPicker(
+			"Custom Colour",
+			"Choose the replacement colour",
+			targetHex,
+			setTarget,
+		)
 	})
 	replaceButton := widget.NewButton("Replace", func() {
 		if strings.EqualFold(model.NormalizeHex(item.Color.Hex), targetHex) {
@@ -517,6 +508,15 @@ func (mw *MainWindow) confirmReplacePaletteColor(item model.PaletteUsage) {
 	replaceButton.Importance = widget.HighImportance
 	content.Add(container.NewHBox(customButton, layout.NewSpacer(), replaceButton))
 	replaceDialog.Show()
+}
+
+func (mw *MainWindow) showAdvancedColorPicker(title, message, currentHex string, onSelected func(string)) {
+	picker := dialog.NewColorPicker(title, message, func(c color.Color) {
+		onSelected(colorToHex(c))
+	}, mw.window)
+	picker.Advanced = true
+	picker.SetColor(renderPreviewColor(currentHex))
+	picker.Show()
 }
 
 func (mw *MainWindow) printDocument() {
@@ -744,6 +744,11 @@ func buildPaletteSummary(
 
 func renderPreviewColor(hex string) color.Color {
 	return renderColor(hex)
+}
+
+func colorToHex(c color.Color) string {
+	r, g, b, _ := c.RGBA()
+	return fmt.Sprintf("#%02X%02X%02X", uint8(r>>8), uint8(g>>8), uint8(b>>8))
 }
 
 func renderColor(hex string) color.Color {
